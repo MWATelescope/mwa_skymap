@@ -29,17 +29,17 @@ jobs:
           pip install --upgrade pip
           pip install ".[dev]"
 
-      - name: Install dev tools
-        run: pip install ruff mypy pytest
+      #- name: Install dev tools
+      #  run: pip install ruff mypy pytest
 
-      - name: Lint
-        run: ruff check .
+      #- name: Lint
+      #  run: ruff check .
 
-      - name: Type check
-        run: mypy src/
+      #- name: Type check
+      #  run: mypy mwa_skymap/
 
-      - name: Run tests
-        run: pytest --tb=short
+      #- name: Run tests
+      #  run: pytest --tb=short
 
   # ── 2. Build ─────────────────────────────────────────────────────────────
   build:

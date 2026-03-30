@@ -17,3 +17,5 @@ Before first use you need to:
     * Required reviewers — adds a manual approval step before the publish job runs. Good for preventing an accidental tag push from immediately shipping to PyPI.
     * Wait timer — adds a delay before the job proceeds.
     * Deployment branches and tags — restrict deployments to only tags matching v* so the environment can't be used from a random branch.
+* In PyPi login and create a Trusted Pending Publisher
+  * This should point to your github repo and github environment.
