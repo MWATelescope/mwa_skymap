@@ -1,0 +1,30 @@
+[project]
+name = "mwa_skymap"
+version = "0.1.0"
+description = "All-sky maps and movies for MWA telescope observations"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [ { name = "Andrew Williams", email = "Andrew.Williams@curtin.edu.au" } ]
+
+requires-python = ">=3.10"
+dependencies = [
+    "apng>=0.3.4",
+    "click>=8.1.7",
+    "astropy>=7.2.0",
+    "requests>=2.31.0",
+    "mwa_hyperbeam>=0.10.4",
+    "ephem>=4.2.0",
+    "matplotlib>=3.10.8",
+    "basemap>=2.0.0",
+    "basemap_data>=2.0.0"
+]
+
+[project.urls]
+Source = "https://github.com/MWATelescope/mwa_skymap"
+
+[project.scripts]
+plotmwa = "mwa_skymap.plotmwa:cli"
+
+[build-system]
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
