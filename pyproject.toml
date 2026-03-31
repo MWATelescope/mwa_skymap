@@ -17,7 +17,7 @@ dependencies = [
     "matplotlib",
     "basemap",
     "basemap_data",
-    "imagio[ffmpeg]"
+    "imageio[ffmpeg]"
 ]
 
 [project.urls]
