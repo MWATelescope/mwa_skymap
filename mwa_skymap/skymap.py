@@ -34,6 +34,8 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 
+print(dir(files('mwa_skymap.data')))
+
 DATA_DIR = str(files('mwa_skymap.data').abspath())
 GLEAMCAT_FILE = os.path.join(DATA_DIR, 'G4Jy_catalogue_allEGCcolumns.fits')
 RADIO_IMAGE_FILE = os.path.join(DATA_DIR, 'radio408.RaDec.fits')   # Haslam image:
