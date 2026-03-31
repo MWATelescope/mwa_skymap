@@ -944,7 +944,7 @@ def mwa_mpeg(outfile=None,
     frame_list = []   # Will contain tuples of (obsid, viewgps)
     for tgps in range(startgps, stopgps, sec_per_frame):
         if tgps >= obsid_list[0]:
-            oid = obsid_list[max([x for x in obsid_list if x <= tgps])]
+            oid = max([x for x in obsid_list if x <= tgps])
         else:
             oid = None
         frame_list.append((oid, tgps))
