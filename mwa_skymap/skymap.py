@@ -829,7 +829,7 @@ def mwa_apng_adaptive(outfile=None,
         startgps = obsid_list[0]
 
     if not stopgps:    # Default to end of the last observation, plus 8 seconds
-        stopgps = observations[obsid_list[-1]]['stoptime']
+        stopgps = observations[obsid_list[-1]]['stoptime'] + 8
 
     obsid_list.sort()
     sec_per_frame = int(60 * max_frame_duration / frame_speed)
@@ -845,7 +845,7 @@ def mwa_apng_adaptive(outfile=None,
         obsid = obsid_list[i]
         obs = observations[obsid]
         if i == len(obsid_list) - 1:  # no next observation, so go a little after the stoptime of this observation
-            exptime = stopgps
+            exptime = stopgps - obs['starttime']
         else:  # Consider this pointing to last until the start of the next pointing, in case there's a gap
             exptime = observations[obsid_list[i + 1]]['starttime'] - obs['starttime']
 
@@ -976,8 +976,7 @@ def mwa_mpeg(outfile=None,
 import requests
 import json
 import time
-import mwaconfig
-from gui import skymap
+from mwa_skymap import skymap
 # obsid = 1456747216
 # obsid = 1454999592
 obsid = 1456774216
@@ -993,7 +992,7 @@ for beam_type in ['MWA_PB', 'HBA', 'HBFEE']:
     
 import json
 import requests
-import skymap
+from mwa_skymap import skymap
 # obsid_list = [1456774216]
 obsid_list = [1458492896, 1458493496, 1458494096, 1458494696, 1458495296, 1458495896, 1458496496, 1458497096, 1458497696, 
               1458498296, 1458498896, 1458499496, 1458500096, 1458500696, 1458501296, 1458501896, 1458502496, 1458503096, 
@@ -1003,7 +1002,7 @@ for obsid in obsid_list:
     obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).text)
     obsinfo_list.append(obs)
     
-skymap.plot_mwa_observations(obsinfo_list=obsinfo_list, outfile='/tmp/%d-skymap-animated.png' % obsid_list[0])
+skymap.mwa_apng_adaptive(obsinfo_list=obsinfo_list, outfile='/tmp/%d-skymap-animated.png' % obsid_list[0])
 
 
 
