@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import sys
+import traceback
 import warnings
 
 import apng
@@ -147,8 +148,7 @@ class SkyData(object):
             self.valid = False
 
         try:
-            fname = os.path.join(RADIO_IMAGE_FILE)
-            self.radio_image = fits.open(fname)
+            self.radio_image = fits.open(RADIO_IMAGE_FILE)
 
             rih = self.radio_image[0].header
             # lower case skymapra and skymapdec are one-dimensional arrays with every valid RA or every valid Dec
@@ -166,6 +166,7 @@ class SkyData(object):
             self.mapgrid.location = MWAPOS
         except:
             logger.error('Cannot open Haslam image')
+            traceback.print_exc()
             self.valid = False
 
         self.sources = {
