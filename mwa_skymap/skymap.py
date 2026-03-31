@@ -159,8 +159,8 @@ class SkyData(object):
             self.skymapRA, self.skymapDec = numpy.meshgrid(self.skymapra[::2] * 15, self.skymapdec[::2])
 
             # noinspection PyUnresolvedReferences
-            self.mapgrid = SkyCoord(ra=SKYDATA.skymapRA,  # Pass in 2D grids of RA and Dec
-                                    dec=SKYDATA.skymapDec,
+            self.mapgrid = SkyCoord(ra=skymapRA,  # Pass in 2D grids of RA and Dec
+                                    dec=skymapDec,
                                     equinox='J2000',
                                     unit=(astropy.units.deg, astropy.units.deg))
             self.mapgrid.location = MWAPOS
