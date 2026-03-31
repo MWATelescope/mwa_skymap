@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-from importlib.resources import files
 import io
 import logging
 import math
@@ -34,22 +33,24 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 
-print(dir(files('mwa_skymap.data')))
+# This will work provided you don't install it in some wierd way that leaves the
+# files in a zip-file or other compressed format. If you want to do that, you can
+# work out how to do this bit, because I've fought importlib.resources long enough,
+# and gave up in horror at the sheer volume of overly complicated, badly documented
+# crap in you need to go through.
 
-fuckthis = files('mwa_skymap.data')
-
-# DATA_DIR = str(files('mwa_skymap.data').absolute().as_posix())
-# GLEAMCAT_FILE = os.path.join(DATA_DIR, 'G4Jy_catalogue_allEGCcolumns.fits')
-# RADIO_IMAGE_FILE = os.path.join(DATA_DIR, 'radio408.RaDec.fits')   # Haslam image:
-# RADIO_IMAGE_LOW = 100     # Value in RADIO_IMAGE_FILE below which is considered black
-# RADIO_IMAGE_HIGH = 10000  # Value in RADIO_IMAGE_FILE above which is considered white
-# if os.getenv('MWA_BEAM_FILE'):
-#     MWA_BEAM_FILE = os.getenv('MWA_BEAM_FILE')
-# elif os.path.exists(os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')):
-#     MWA_BEAM_FILE = os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')
-# else:
-#     MWA_BEAM_FILE = None
-# MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93", lat="-26:42:11.95", height=377.8)
+DATA_DIR = os.path.join(os.path.split(__file__)[0], 'data')
+GLEAMCAT_FILE = os.path.join(DATA_DIR, 'G4Jy_catalogue_allEGCcolumns.fits')
+RADIO_IMAGE_FILE = os.path.join(DATA_DIR, 'radio408.RaDec.fits')   # Haslam image:
+RADIO_IMAGE_LOW = 100     # Value in RADIO_IMAGE_FILE below which is considered black
+RADIO_IMAGE_HIGH = 10000  # Value in RADIO_IMAGE_FILE above which is considered white
+if os.getenv('MWA_BEAM_FILE'):
+    MWA_BEAM_FILE = os.getenv('MWA_BEAM_FILE')
+elif os.path.exists(os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')):
+    MWA_BEAM_FILE = os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')
+else:
+    MWA_BEAM_FILE = None
+MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93", lat="-26:42:11.95", height=377.8)
 
 # noinspection PyUnresolvedReferences
 CM = plt.cm.gray
