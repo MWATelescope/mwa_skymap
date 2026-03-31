@@ -10,6 +10,8 @@ import warnings
 
 import apng
 
+import imageio.v2 as iio
+
 warnings.filterwarnings("ignore")
 
 logging.basicConfig()
@@ -53,6 +55,10 @@ FIGSIZE = 8
 DPI = 150
 
 SKYDATA = None   # Will be an instance of SkyData() after the first use
+
+DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)d at %(viewgps_utc)s:\n" +
+                     "%(obsname)s at %(freq_mhz)d MHz\n" +
+                     "in the constellation %(constellation)s'")
 
 # Used for multiple primary beams - the first beam is green contours, the second is cyan, etc
 PBCOLORS = [(0.0, 1.0, 0.0),  # green
@@ -146,6 +152,13 @@ class SkyData(object):
             self.skymapdec = self.skymapdec[self.skymapdec < (90.0 - MWAPOS.lat.deg)]   # Remove all Dec values never visible from our latitude
             # Capitalised skymapRA and skymapDec are each two-dimensional arrays of either RA or Dec, that together cover every grid point
             self.skymapRA, self.skymapDec = numpy.meshgrid(self.skymapra[::2] * 15, self.skymapdec[::2])
+
+            # noinspection PyUnresolvedReferences
+            self.mapgrid = SkyCoord(ra=SKYDATA.skymapRA,  # Pass in 2D grids of RA and Dec
+                                    dec=SKYDATA.skymapDec,
+                                    equinox='J2000',
+                                    unit=(astropy.units.deg, astropy.units.deg))
+            self.mapgrid.location = MWAPOS
         except:
             logger.error('Cannot open Haslam image')
             self.valid = False
@@ -402,10 +415,16 @@ def plot_MWA_skymap(delays=None,
     skymap.SkyData() that can be loaded and customised. If not pre-loaded into the global, it will be loaded and
     cached the first time this function is called.
 
-    The MWA primary beam is plotted in contours over this background, computed using the 'delays' and 'channels'
+    The MWA primary beam is plotted in contours over this background.
+
+    If the 'delays' and 'channels' parameters are given, for one or more primary MWA beams, the
+    get_beam() function is used to generate one or more numpy array/s using the 'delays' and 'channels'
     parameters. The 'delays' parameter can either be a list of 16 dipole delay values, or a list of lists of 16
     dipole delay values, one per primary beam. The 'channels' parameter can either be a single MWA channel number,
     or a list of MWA channel numbers, one per primary beam.
+
+    If the 'primary_beams' parameter is given, it must be a numpy array as returned by get_beam(), or a list of those
+    numpy arrays. The 'delays' and 'channels' parameters are then only used to populate the text in the sky map plot.
 
     If the voltage_beams parameter is provided, it should be a dictionary of voltage beams with key=beam_number,
     each a dict with 'ra', 'dec', and 'name' items, containing beam RA and Dec in degrees, and name as a string. These
@@ -418,7 +437,7 @@ def plot_MWA_skymap(delays=None,
 
     The rest of the parameters are optional, and described below.
 
-    :param delays:  Either a list of 16 dipole delays (for a single primary beam), or a list of lists of dipole delays, one per primary beam
+    :param delays: Either a list of 16 dipole delays (for a single primary beam), or a list of lists of dipole delays, one per primary beam
     :param channels: Either a single MWA channel number, or a list of MWA channel numbers, one per primary beam
     :param viewgps:  The GPS time in seconds for which the plot should be generated
     :param gleamsources:  If True, show the GLEAM source list as blue dots
@@ -448,24 +467,15 @@ def plot_MWA_skymap(delays=None,
     a_viewtime.delta_ut1_utc = 0  # We don't care about IERS tables and high precision answers
     LST_hours = a_viewtime.sidereal_time(kind='apparent', longitude=MWAPOS.lon)
 
-    # noinspection PyUnresolvedReferences
-    mapzenith = SkyCoord(ra=SKYDATA.skymapRA,  # Pass in 2D grids of RA and Dec
-                         dec=SKYDATA.skymapDec,
-                         equinox='J2000',
-                         unit=(astropy.units.deg, astropy.units.deg))
-    mapzenith.location = MWAPOS
-    mapzenith.obstime = a_viewtime
-    altaz = mapzenith.transform_to('altaz')
-    Az, Alt = altaz.az.deg, altaz.alt.deg      # Both 2D grids of Az and Alt
-
     fig = plt.figure(figsize=(FIGSIZE * plotscale, FIGSIZE * plotscale), dpi=DPI)
     ax1 = fig.add_subplot(1, 1, 1)
 
+    # Create a Basemap instance in RA and Dec, where MWA's latitude and the current viewgps LST are used as the zenith
     bmap = Basemap(projection='ortho', lat_0=MWAPOS.lat.deg, lon_0=LST_hours.hour * 15 - 360, ax=ax1)
 
     ax1.cla()
 
-    # show the Haslam map
+    # Transform ra/dec grid to the map coordinate frame.
     tform_skymap = bmap.transform_scalar(SKYDATA.radio_image[0].data[0][:, ::-1],  # FITS data HDU, with last axis in reverse order
                                          SKYDATA.skymapra[::-1] * 15,  # one-dimensional RA list in reverse order
                                          SKYDATA.skymapdec,    # one dimensional DEC list
@@ -477,44 +487,51 @@ def plot_MWA_skymap(delays=None,
     else:
         cmap = CM
 
+    # Show the radio image on the map
     bmap.imshow(numpy.ma.log10(tform_skymap[:, ::-1]), cmap=cmap, vmin=math.log10(RADIO_IMAGE_LOW), vmax=math.log10(RADIO_IMAGE_HIGH), ax=ax1)
+    # This line needs to be repeated to do anything for old matplotlib versions
     bmap.imshow(numpy.ma.log10(tform_skymap[:, ::-1]), cmap=cmap, vmin=math.log10(RADIO_IMAGE_LOW), vmax=math.log10(RADIO_IMAGE_HIGH), ax=ax1)
 
-    if type(delays[0] is list):   # Multiple primary beams
-        if type(channels) is list:   # Multiple channel values, one per beam
-            beam_list = zip(delays, channels)
+    if delays:
+        if type(delays[0] is list):   # Multiple primary beams
+            if type(channels) is list:   # Multiple channel values, one per beam
+                beam_list = zip(delays, channels)
+            else:
+                beam_list = zip(delays, [channels] * len(delays))
         else:
-            beam_list = zip(delays, [channels] * len(delays))
-    else:
-        beam_list = [(delays, channels)]
+            beam_list = [(delays, channels)]
 
-    bi = 0
-    for beam_info in beam_list:
-        this_delays, this_channel = beam_info
-        base_color = PBCOLORS[bi]
-        if not hidenulls:
-            contours = [0.001, 0.1, 0.5, 0.90]
-            beamcolor = [(0.0, 0.0, 0.0),
-                         tuple((x * 0.5 for x in base_color)),
-                         tuple((x * 0.75 for x in base_color)),
-                         base_color]
-        else:
-            contours = [0.1, 0.5, 0.90]
-            beamcolor = [tuple((x * 0.5 for x in base_color)),
-                         tuple((x * 0.75 for x in base_color)),
-                         base_color]
-        # get this primary beam
-        R = get_beam(Alt,
-                     Az,
-                     this_delays,
-                     this_channel * 1.28e6,
-                     beam_type=beam_type)
-        # show the beam
-        X, Y = bmap(SKYDATA.skymapRA, SKYDATA.skymapDec)
-        CS = bmap.contour(bmap.xmax - X, Y, R, contours, linewidths=plotscale, colors=beamcolor)
-        ax1.clabel(CS, inline=1, fontsize=10 * plotscale)
+        SKYDATA.mapgrid.obstime = a_viewtime
+        altaz = SKYDATA.mapgrid.transform_to('altaz')
+        Az, Alt = altaz.az.deg, altaz.alt.deg      # Both 2D grids of Az and Alt
 
-        bi += 1
+        bi = 0
+        for beam_info in beam_list:
+            this_delays, this_channel = beam_info
+            base_color = PBCOLORS[bi]
+            if not hidenulls:
+                contours = [0.001, 0.1, 0.5, 0.90]
+                beamcolor = [(0.0, 0.0, 0.0),
+                             tuple((x * 0.5 for x in base_color)),
+                             tuple((x * 0.75 for x in base_color)),
+                             base_color]
+            else:
+                contours = [0.1, 0.5, 0.90]
+                beamcolor = [tuple((x * 0.5 for x in base_color)),
+                             tuple((x * 0.75 for x in base_color)),
+                             base_color]
+            # get this primary beam
+            R = get_beam(Alt,
+                         Az,
+                         this_delays,
+                         this_channel * 1.28e6,
+                         beam_type=beam_type)
+            # show the beam
+            X, Y = bmap(SKYDATA.skymapRA, SKYDATA.skymapDec)
+            CS = bmap.contour(bmap.xmax - X, Y, R, contours, linewidths=plotscale, colors=beamcolor)
+            ax1.clabel(CS, inline=1, fontsize=10 * plotscale)
+
+            bi += 1
 
     X0, Y0 = bmap(LST_hours.hour * 15 - 360, MWAPOS.lat.deg)
 
@@ -662,7 +679,7 @@ def plot_MWA_skymap(delays=None,
 def plot_MWA_obs_frame(obsinfo=None,
                        viewgps=None,
                        gleamsources=False,
-                       plot_text=None,
+                       plot_text_template=DEFAULT_PLOT_TEXT,
                        inverse=False,
                        background='black',
                        hidenulls=False,
@@ -680,10 +697,19 @@ def plot_MWA_obs_frame(obsinfo=None,
         - ra_pc and dec_pc, the RA and Dec of the phase center in degrees
     from the obsinfo structure and passes them to plot_MWA_skymap() along with the other parameters.
 
+    plot_text_template is the text to be inserted at the top left of the plot. Use %(<field_name>)s, etc, to insert the value of a field.
+    Valid field names are:
+        obsid          Obs start time in GPS seconds
+        viewgps_gps    View time in GPS seconds
+        viewgps_utc    View date/time as a UTC string
+        obsname        Observation name
+        freq_mhz       Centre channel frequency in MHz
+        constellation  Name of the constellation that the phase centre is located in.
+
     :param obsinfo:  An MWA observation info structure, eg from the /metadata/obs web service, tilestatus.getObservationInfo()
     :param viewgps:  The GPS time in seconds for which the plot should be generated (default is the observation midpoint time)
     :param gleamsources:  If True, show the GLEAM source list as blue dots
-    :param plot_text:  If None, generate a default text string summarising the observation data; if a string, use that string
+    :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
     :param inverse:  If True, plot the Haslam radio image in white-on-black
     :param background:  One of 'black', 'white', or 'transparent' - default is 'black'
     :param hidenulls:  If True, don't show the null (power = 0.001) contour lines in black
@@ -693,58 +719,60 @@ def plot_MWA_obs_frame(obsinfo=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
-    if obsinfo is None:
-        logger.error('Unable to find observation info')
-        return None
+    if obsinfo:
+        all_delays = []
+        all_channels = []
+        r_list = list(obsinfo['rfstreams'].keys())
+        r_list.sort()
+        for rfs_id in r_list:
+            rfs = obsinfo['rfstreams'][rfs_id]
+            channel = rfs['frequencies'][12]
+            # If the observation is in the future, calculate what delays will be used, instead of using the recorded actual delays
+            if not rfs['xdelays']:
+                delays = calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
+                logger.debug("Calculated future delays: %s" % delays)
+            else:
+                delays = rfs['xdelays']
+                logger.debug("Used actual delays: %s" % delays)
 
-    all_delays = []
-    all_channels = []
-    r_list = list(obsinfo['rfstreams'].keys())
-    r_list.sort()
-    for rfs_id in r_list:
-        rfs = obsinfo['rfstreams'][rfs_id]
-        channel = rfs['frequencies'][12]
-        # If the observation is in the future, calculate what delays will be used, instead of using the recorded actual delays
-        if not rfs['xdelays']:
-            delays = calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
-            logger.debug("Calculated future delays: %s" % delays)
+            all_delays.append(delays)
+            all_channels.append(channel)
+
+        voltage_beams = obsinfo['voltage_beams']
+
+        # Find the constellation that the beam is in
+        if obsinfo['ra_phase_center'] is not None:
+            ra_pc = obsinfo['ra_phase_center']
+            dec_pc = obsinfo['dec_phase_center']
         else:
-            delays = rfs['xdelays']
-            logger.debug("Used actual delays: %s" % delays)
+            ra_pc = obsinfo['metadata']['ra_pointing']
+            dec_pc = obsinfo['metadata']['dec_pointing']
+        if (ra_pc is not None) and (dec_pc is not None):
+            constellation = ephem.constellation((ra_pc * math.pi / 180.0, dec_pc * math.pi / 180.0))
+        else:
+            constellation = ["N/A", "N/A"]
 
-        all_delays.append(delays)
-        all_channels.append(channel)
+        if not viewgps:   # Default to midpoint of observation
+            viewgps = (obsinfo['starttime'] + obsinfo['stoptime']) / 2
 
-    # Find the constellation that the beam is in
-    if obsinfo['ra_phase_center'] is not None:
-        ra_pc = obsinfo['ra_phase_center']
-        dec_pc = obsinfo['dec_phase_center']
+        plot_text = plot_text_template % {'obsid':obsinfo['starttime'],
+                                          'viewgps_gps':viewgps,
+                                          'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
+                                          'obsname':obsinfo['obsname'],
+                                          'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
+                                          'constellation':constellation[1]}
     else:
-        ra_pc = obsinfo['metadata']['ra_pointing']
-        dec_pc = obsinfo['metadata']['dec_pointing']
-    if (ra_pc is not None) and (dec_pc is not None):
-        constellation = ephem.constellation((ra_pc * math.pi / 180.0, dec_pc * math.pi / 180.0))
-    else:
-        constellation = ["N/A", "N/A"]
+        plot_text = None
+        voltage_beams = None
 
-    if not viewgps:   # Default to midpoint of observation
-        viewgps = (obsinfo['starttime'] + obsinfo['stoptime']) / 2
-
-    if plot_text is None:
-        plot_text = 'Obs ID %d at %s:\n%s at %d MHz\nin the constellation %s' % (obsinfo['starttime'],
-                                                                                 Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
-                                                                                 obsinfo['obsname'],
-                                                                                 obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
-                                                                                 constellation[1])
-
-    return plot_MWA_skymap(delays=all_delays,
-                           channels=all_channels,
+    return plot_MWA_skymap(delays=None,
+                           channels=None,
                            viewgps=viewgps,
                            gleamsources=gleamsources,
                            plot_text=plot_text,
-                           ra_pc=ra_pc,
-                           dec_pc=dec_pc,
-                           voltage_beams=obsinfo['voltage_beams'],
+                           ra_pc=None,
+                           dec_pc=None,
+                           voltage_beams=voltage_beams,
                            inverse=inverse,
                            background=background,
                            hidenulls=hidenulls,
@@ -754,18 +782,20 @@ def plot_MWA_obs_frame(obsinfo=None,
                            logger=logger)
 
 
-def plot_mwa_observations(outfile=None,
-                          obsinfo_list=None,
-                          max_frame_rate=500,   # Maximum number of milliseconds per frame
-                          frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
-                          gleamsources=False,
-                          plot_text=None,
-                          inverse=False,
-                          background='black',
-                          hidenulls=False,
-                          beam_type='HBA',
-                          plotsize=DEFAULT_PLOTSIZE,
-                          logger=DEFAULTLOGGER):
+def mwa_apng_adaptive(outfile=None,
+                      startgps=None,
+                      stopgps=None,
+                      obsinfo_list=None,
+                      max_frame_duration=500,  # Maximum number of milliseconds per frame
+                      frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
+                      gleamsources=False,
+                      plot_text_template=DEFAULT_PLOT_TEXT,
+                      inverse=False,
+                      background='black',
+                      hidenulls=False,
+                      beam_type='HBA',
+                      plotsize=DEFAULT_PLOTSIZE,
+                      logger=DEFAULTLOGGER):
     """
     Given a list of observation info structures (assumed to be consecutive observations), generate an animated PNG of the skymaps
     for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
@@ -774,11 +804,114 @@ def plot_mwa_observations(outfile=None,
     also after every five minutes of actual observing time if the observation/s are longer than five minutes.
 
     :param outfile: Output filename, or if not supplied, the image is returned as a byte array
+    :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
+    :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
     :param obsinfo_list:  A list of observation information structures, each describing a single observation
-    :param max_frame_rate: Longest time (in milliseconds) to display a single frame - will be shorter if a repointing happens
+    :param max_frame_duration: Longest time (in milliseconds) to display a single frame - will be shorter if a repointing happens
     :param frame_speed: Number of milliseconds of video per minute of actual observing time
     :param gleamsources:  If True, show the GLEAM source list as blue dots
-    :param plot_text:  If None, generate a default text string summarising the observation data; if a string, use that string
+    :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
+    :param inverse:  If True, plot the Haslam radio image in white-on-black
+    :param background:  Onbe of 'black', 'white', or 'transparent' - default is 'black'
+    :param hidenulls:  If True, don't show the null (power = 0.001) contour lines in black
+    :param beam_type:  One of 'HBA' or 'HBFEE' for Hyperbeam analytic or FEE, or 'MWA_PB' for mwa_pb.primary beam analytic
+    :param plotsize:  Output plot width and height in pixels
+    :param logger: Optional logging.Logger() instance
+    :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
+    """
+    observations = {None:None}
+    obsid_list = []
+    for obs in obsinfo_list:
+        observations[obs['starttime']] = obs
+        obsid_list.append(obs['starttime'])
+
+    if not startgps:   # Default to start of the first observation
+        startgps = obsid_list[0]
+
+    if not stopgps:    # Default to end of the last observation, plus 8 seconds
+        stopgps = observations[obsid_list[-1]]['stoptime']
+
+    obsid_list.sort()
+    sec_per_frame = int(60 * max_frame_duration / frame_speed)
+
+    frame_list = []   # Will contain tuples of (obsid, viewgps, duration_seconds)
+    if startgps < obsid_list[0]:
+        for tgps in range(startgps, obsid_list[0], sec_per_frame):
+            frame_list.append((None, tgps, sec_per_frame))
+        if frame_list[-1][1] + sec_per_frame < obsid_list[0]:
+            frame_list.append((None, (frame_list[-1][1] + sec_per_frame), obsid_list[0] - (frame_list[-1][1] + sec_per_frame)))
+
+    for i in range(len(obsid_list)):
+        obsid = obsid_list[i]
+        obs = observations[obsid]
+        if i == len(obsid_list) - 1:  # no next observation, so go a little after the stoptime of this observation
+            exptime = stopgps
+        else:  # Consider this pointing to last until the start of the next pointing, in case there's a gap
+            exptime = observations[obsid_list[i + 1]]['starttime'] - obs['starttime']
+
+        if exptime < sec_per_frame:   # Add a single frame for this observation, with the appropriate duration
+            frame_list.append((obsid, obs['viewgps'], exptime))
+        else:   # Add multiple frames for this observation, with the appropriate duration
+            t = obsid
+            while t < obs['starttime'] + exptime - sec_per_frame:
+                frame_list.append((obsid, t, sec_per_frame))   # Most frames have a fixed duration
+                t += sec_per_frame
+            frame_list.append((obsid, t, obsid + exptime - t))  # Final frame has a duration until the next pointing
+
+    print('Framelist:\n    ' + '\n    '.join(str(f) for f in frame_list))
+
+    o_im = apng.APNG()
+    for f in frame_list:
+        oid, vgps, dur_sec = f
+        im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
+                                      viewgps=vgps,
+                                      gleamsources=gleamsources,
+                                      plot_text_template=plot_text_template,
+                                      inverse=inverse,
+                                      background=background,
+                                      hidenulls=hidenulls,
+                                      beam_type=beam_type,
+                                      plotsize=plotsize,
+                                      img_format='png',
+                                      logger=logger)
+        o_im.append(apng.PNG.from_bytes(im_frame), delay=int(dur_sec * frame_speed / 60.0))
+
+    if not outfile:
+        return o_im.to_bytes()
+    else:
+        o_im.save(outfile)
+        return ''
+
+
+def mwa_mpeg(outfile=None,
+             startgps=None,
+             stopgps=None,
+             obsinfo_list=None,
+             frame_rate=2,   # frames per second
+             frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
+             gleamsources=False,
+             plot_text_template=DEFAULT_PLOT_TEXT,
+             inverse=False,
+             background='black',
+             hidenulls=False,
+             beam_type='HBA',
+             plotsize=DEFAULT_PLOTSIZE,
+             logger=DEFAULTLOGGER):
+    """
+    Given a list of observation info structures (assumed to be consecutive observations), generate an animated PNG of the skymaps
+    for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
+
+    Each frame in an animated PNG can have its own individual duration, so new frames are generated on every new obsid, and
+    also after every five minutes of actual observing time if the observation/s are longer than five minutes.
+
+    :param outfile: Output filename, or if not supplied, the image is returned as a byte array
+    :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
+    :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
+    :param obsinfo_list:  A list of observation information structures, each describing a single observation
+    :param frame_rate: Number of frames per second of playing time in the output video
+    :param frame_speed: Number of milliseconds of video per minute of actual observing time
+    :param gleamsources:  If True, show the GLEAM source list as blue dots
+    :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
     :param inverse:  If True, plot the Haslam radio image in white-on-black
     :param background:  Onbe of 'black', 'white', or 'transparent' - default is 'black'
     :param hidenulls:  If True, don't show the null (power = 0.001) contour lines in black
@@ -794,33 +927,34 @@ def plot_mwa_observations(outfile=None,
         obsid_list.append(obs['starttime'])
 
     obsid_list.sort()
-    sec_per_frame = 60 * max_frame_rate / frame_speed
+    sec_per_frame = int((60000 / frame_rate) / frame_speed)   # Number of seconds of observing time per frame
 
-    frame_list = []   # Will contain tuples of (obsid, viewgps, duration_seconds)
-    for i in range(len(obsid_list)):
-        obsid = obsid_list[i]
-        obs = observations[obsid]
-        if i == len(obsid_list) - 1:  # no next observation, so go a little after the stoptime of this observation
-            exptime = obs['stoptime'] - obs['starttime'] + 8
-        else:  # Consider this pointing to last until the start of the next pointing, in case there's a gap
-            exptime = observations[obsid_list[i + 1]]['starttime'] - obs['starttime']
+    if not startgps:   # Default to start of the first observation
+        startgps = obsid_list[0]
 
-        if exptime < sec_per_frame:   # Add a single frame for this observation, with the appropriate duration
-            frame_list.append((obsid, obs['viewgps'], exptime))
-        else:   # Add multiple frames for this observation, with the appropriate duration
-            t = obsid
-            while t < obs['starttime'] + exptime - sec_per_frame:
-                frame_list.append((obsid, t, sec_per_frame))   # Most frames have a fixed duration
-                t += sec_per_frame
-            frame_list.append((obsid, t, obsid + exptime - t))  # Final frame has a duration until the next pointing
+    if not stopgps:    # Default to end of the last observation, plus 8 seconds
+        stopgps = observations[obsid_list[-1]]['stoptime']
 
-    o_im = apng.APNG()
+    frame_list = []   # Will contain tuples of (obsid, viewgps)
+    for tgps in range(startgps, stopgps, sec_per_frame):
+        if tgps >= obsid_list[0]:
+            oid = obsid_list[max([x for x in obsid_list if x <= tgps])]
+        else:
+            oid = None
+        frame_list.append((oid, tgps))
+
+    if outfile:
+        output = iio.get_writer(outfile, mode='I', format='FFMPEG', fps=frame_speed)
+    else:
+        buf = io.BytesIO()
+        output = iio.get_writer(buf, mode='I', format='FFMPEG', fps=frame_speed)
+
     for f in frame_list:
-        oid, vgps, dur_sec = f
+        oid, vgps = f
         im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
                                       viewgps=vgps,
                                       gleamsources=gleamsources,
-                                      plot_text=plot_text,
+                                      plot_text_template=plot_text_template,
                                       inverse=inverse,
                                       background=background,
                                       hidenulls=hidenulls,
@@ -828,13 +962,14 @@ def plot_mwa_observations(outfile=None,
                                       plotsize=plotsize,
                                       img_format='png',
                                       logger=logger)
-        o_im.append(apng.PNG.from_bytes(im_frame), delay=int(dur_sec * frame_speed / 60.0))
+        output.append_data(iio.imread(im_frame))
 
-    if not outfile:
-        return o_im.to_bytes()
-    else:
-        o_im.save(outfile)
+    if outfile:
+        output.close()
         return ''
+    else:
+        buf.seek(0)
+        return buf.read()
 
 
 """

@@ -16,7 +16,8 @@ dependencies = [
     "ephem",
     "matplotlib",
     "basemap",
-    "basemap_data"
+    "basemap_data",
+    "imagio[ffmpeg]"
 ]
 
 [project.urls]

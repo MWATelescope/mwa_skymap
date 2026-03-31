@@ -1,0 +1,62 @@
+skymap.SKYDATA - structure with:
+    gleamcat
+    radio_image
+    skymapra (1D) skymapdec (1D) 1D arrays of all coordinate values in radio_image
+    skymapRA (2D) skymapDec (2D) 2D grids of all coordinate values in radio_image
+    mapgrid (SkyCoord of radio_image grid) (has location of MWAPOS, and has obstime updated at each calculation)
+    sources (dict of Source objects)
+    valid (bool)
+
+
+def plot_MWA_skymap(delays=None,
+                    channels=None,
+                    viewgps=None,
+                    gleamsources=False,
+                    plot_text=None,
+                    ra_pc=None,
+                    dec_pc=None,
+                    voltage_beams=None,
+                    inverse=False,
+                    background='black',
+                    hidenulls=False,
+                    beam_type='HBA',
+                    plotsize=DEFAULT_PLOTSIZE,
+                    img_format='png')
+
+
+def plot_MWA_obs_frame(obsinfo=None,
+                       viewgps=None,
+                       gleamsources=False,
+                       plot_text_template=None,
+                       inverse=False,
+                       background='black',
+                       hidenulls=False,
+                       beam_type='HBA',
+                       img_format='png',
+                       plotsize=DEFAULT_PLOTSIZE)
+        Uses obsinfo record to generate:
+            delays
+            channels
+            ra_pc, dec_pc
+            voltage_beams
+            The field contents in plot_text_template to create plot_text
+        Then calls plot_MWA_skymap() with all other args
+
+
+def mwa_apng_adaptive(outfile=None,
+                      obsinfo_list=None,
+                      max_frame_rate=500,   # Maximum number of milliseconds per frame
+                      frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
+                      gleamsources=False,
+                      plot_text_template=DEFAULT_PLOT_TEXT,
+                      inverse=False,
+                      background='black',
+                      hidenulls=False,
+                      beam_type='HBA',
+                      plotsize=DEFAULT_PLOTSIZE):
+    Produce an animated PNG file, where every <frame_speed>ms of viewing time represents 60 seconds of observing time.
+
+    Frames are unequal in length, each frame generated after <max_frame_rate>ms of video play time, or when the next
+    observation starts, whichever occurs first.
+
+    The observations are passed in as an obsinfo_list, and the frames are generated with repeated calls to plot_MWA_obs_frame()
