@@ -112,17 +112,25 @@ def movie(obsids, startgps, stopgps, fps, mps, gleamsources, text, inverse, back
         for obsid in obsids:
             obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).text)
             obsinfo_list.append(obs)
+    else:
+        if not (startgps and stopgps):
+            print('Need --startgps and --stopgps or at least one obsid')
+            return -1
+        result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
+        for block in result:
+            obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % block[0]).text)
+            obsinfo_list.append(obs)
 
     if not startgps:
         if obsinfo_list:
-            viewgps = int(obsinfo_list[0]['starttime'])
+            startgps = int(obsinfo_list[0]['starttime'])
         else:
             print('Need --startgps or at least one obsid')
             return -1
 
     if not stopgps:
         if obsinfo_list:
-            viewgps = int(obsinfo_list[-1]['stoptime'])
+            stopgps = int(obsinfo_list[-1]['stoptime'])
         else:
             print('Need --stopgps or at least one obsid')
             return -1
