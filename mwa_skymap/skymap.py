@@ -941,8 +941,8 @@ def mwa_mpeg(outfile=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
-    observations = {}
-    obsid_list = []
+    observations = {9999999999:None}
+    obsid_list = [9999999999]
     for obs in obsinfo_list:
         observations[obs['starttime']] = obs
         obsid_list.append(obs['starttime'])
@@ -961,7 +961,7 @@ def mwa_mpeg(outfile=None,
         if tgps >= obsid_list[0]:
             oid = max([x for x in obsid_list if x <= tgps])
         else:
-            oid = None
+            oid = 9999999999
         frame_list.append((oid, tgps))
 
     got_vaapi = os.path.exists('/dev/dri/renderD128')
