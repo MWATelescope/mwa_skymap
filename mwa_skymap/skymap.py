@@ -63,7 +63,7 @@ DPI = 150
 SKYDATA = None   # Will be an instance of SkyData() after the first use
 
 DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)d at %(viewgps_utc)s:\n" +
-                     "%(obsname)s at %(freq_mhz)d MHz\n" +
+                     "%(obsname)s at %(freq_mhz)s MHz\n" +
                      "in the constellation %(constellation)s'")
 
 # Used for multiple primary beams - the first beam is green contours, the second is cyan, etc
@@ -761,12 +761,20 @@ def plot_MWA_obs_frame(obsinfo=None,
         if not viewgps:   # Default to midpoint of observation
             viewgps = (obsinfo['starttime'] + obsinfo['stoptime']) / 2
 
-        plot_text = plot_text_template % {'obsid':obsinfo['starttime'],
-                                          'viewgps_gps':viewgps,
-                                          'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
-                                          'obsname':obsinfo['obsname'],
-                                          'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
-                                          'constellation':constellation[1]}
+        if obsinfo:
+            plot_text = plot_text_template % {'obsid':obsinfo['starttime'],
+                                              'viewgps_gps':viewgps,
+                                              'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
+                                              'obsname':obsinfo['obsname'],
+                                              'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
+                                              'constellation':constellation[1]}
+        else:
+            plot_text = plot_text_template % {'obsid':'N/A',
+                                              'viewgps_gps': viewgps,
+                                              'viewgps_utc': Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
+                                              'obsname':'N/A',
+                                              'freq_mhz':'N/A',
+                                              'constellation':'N/A'}
     else:
         plot_text = None
         voltage_beams = None
