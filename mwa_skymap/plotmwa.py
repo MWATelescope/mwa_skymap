@@ -99,7 +99,7 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 @click.option('--beam_type', type=str, default='HBA', help="One of %s" % (', '.join(skymap.BEAMS.keys())))
 @click.option('--plotsize', type=int, default=1200, help='Plot width and height in pixels (default 1200)')
 @click.option('--outfile', type=str, default=None, help='Output filename - extension determines file type')
-def movie(obsids, startgps, stopgps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
+def movie(obsids, startgps, stopgps, fps, mps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
     """
     Plots a movie, either animated PNG or MPEG
     """
