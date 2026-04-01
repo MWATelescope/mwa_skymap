@@ -978,7 +978,7 @@ def mwa_mpeg(outfile=None,
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(outfile, mode='I', output_params={'stream_loop=0'}, format='FFMPEG', fps=fps)
+            output = iio.get_writer(outfile, mode='I', output_params=['stream_loop=0'], format='FFMPEG', fps=fps)
     else:
         buf = io.BytesIO()
         if got_vaapi:
@@ -991,7 +991,7 @@ def mwa_mpeg(outfile=None,
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(buf, mode='I', output_params={'stream_loop=0'}, format='FFMPEG', fps=fps)
+            output = iio.get_writer(buf, mode='I', output_params=['stream_loop=0'], format='FFMPEG', fps=fps)
 
     for f in frame_list:
         oid, vgps = f
