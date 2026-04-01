@@ -825,7 +825,7 @@ def mwa_apng_adaptive(outfile=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
-    observations = {None:None}
+    observations = {None:{}}
     obsid_list = []
     for obs in obsinfo_list:
         observations[obs['starttime']] = obs
@@ -835,6 +835,9 @@ def mwa_apng_adaptive(outfile=None,
         startgps = obsid_list[0]
 
     if not stopgps:    # Default to end of the last observation, plus 8 seconds
+        if not observations[obsid_list[-1]]:
+            print('No observations passed, no stopgps')
+            return None
         stopgps = observations[obsid_list[-1]]['stoptime'] + 8
 
     obsid_list.sort()
@@ -894,7 +897,7 @@ def mwa_mpeg(outfile=None,
              stopgps=None,
              obsinfo_list=None,
              frame_rate=2,   # frames per second
-             frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
+             frame_speed=100,  # Number of milliseconds of video per minute of actual observing time (default=100, or 10 minutes per second)
              gleamsources=False,
              plot_text_template=DEFAULT_PLOT_TEXT,
              inverse=False,
@@ -949,11 +952,32 @@ def mwa_mpeg(outfile=None,
             oid = None
         frame_list.append((oid, tgps))
 
+    got_vaapi = os.path.exists('/dev/dri/renderD128')
+    buf = None
+    output = None
     if outfile:
-        output = iio.get_writer(outfile, mode='I', format='FFMPEG', fps=frame_speed)
+        if got_vaapi:
+            iio.get_writer(outfile, format='FFMPEG', mode='I', fps=1,
+                           codec='h264_vaapi',
+                           output_params=['-vaapi_device',
+                                          '/dev/dri/renderD128',
+                                          '-vf',
+                                          'format=gray|nv12,hwupload'],
+                           pixelformat='vaapi_vld')
+        else:
+            output = iio.get_writer(outfile, mode='I', format='FFMPEG', fps=frame_rate)
     else:
         buf = io.BytesIO()
-        output = iio.get_writer(buf, mode='I', format='FFMPEG', fps=frame_speed)
+        if got_vaapi:
+            iio.get_writer(buf, format='FFMPEG', mode='I', fps=1,
+                           codec='h264_vaapi',
+                           output_params=['-vaapi_device',
+                                          '/dev/dri/renderD128',
+                                          '-vf',
+                                          'format=gray|nv12,hwupload'],
+                           pixelformat='vaapi_vld')
+        else:
+            output = iio.get_writer(buf, mode='I', format='FFMPEG', fps=frame_rate)
 
     for f in frame_list:
         oid, vgps = f
