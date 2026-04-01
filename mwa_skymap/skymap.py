@@ -726,7 +726,7 @@ def plot_MWA_obs_frame(obsinfo=None,
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
     if obsinfo:
-        print('rendering obsid: %s at %s' % (obsinfo['starttime']. viewgps))
+        print('rendering obsid: %s at %s' % (obsinfo['starttime'], viewgps))
         all_delays = []
         all_channels = []
         r_list = list(obsinfo['rfstreams'].keys())
