@@ -90,7 +90,7 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
 @click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
 @click.option('--gleamsources', is_flag=True, help='Show GLEAM sources as blue dots')
-@click.option('--text', type=str, default=None, help='Text to show on plot, instead of the default')
+@click.option('--text', type=str, default=skymap.DEFAULT_PLOT_TEXT, help='Text to show on plot, instead of the default')
 @click.option('--inverse', is_flag=True, help='Show HASLAM map as black-on-white')
 @click.option('--background', type=str, default='black', help="One of 'black', 'white', or 'transparent' - default is 'black'")
 @click.option('--hidenulls', is_flag=True, help="Don't show black contours for beam nulls")
