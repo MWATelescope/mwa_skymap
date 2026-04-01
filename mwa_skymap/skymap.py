@@ -971,27 +971,27 @@ def mwa_mpeg(outfile=None,
         if got_vaapi:
             iio.get_writer(outfile, format='FFMPEG', mode='I', fps=1,
                            codec='h264_vaapi',
-                           stream_loop=-1,
+                           loop=0,
                            output_params=['-vaapi_device',
                                           '/dev/dri/renderD128',
                                           '-vf',
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(outfile, mode='I', stream_loop=-1, format='FFMPEG', fps=fps)
+            output = iio.get_writer(outfile, mode='I', loop=0, format='FFMPEG', fps=fps)
     else:
         buf = io.BytesIO()
         if got_vaapi:
             iio.get_writer(buf, format='FFMPEG', mode='I', fps=1,
                            codec='h264_vaapi',
-                           stream_loop=-1,
+                           loop=0,
                            output_params=['-vaapi_device',
                                           '/dev/dri/renderD128',
                                           '-vf',
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(buf, mode='I', stream_loop=-1, format='FFMPEG', fps=fps)
+            output = iio.get_writer(buf, mode='I', loop=0, format='FFMPEG', fps=fps)
 
     for f in frame_list:
         oid, vgps = f
