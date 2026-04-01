@@ -461,7 +461,7 @@ def plot_MWA_skymap(delays=None,
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
     global SKYDATA
-    if True:  # SKYDATA is None:
+    if SKYDATA is None:
         SKYDATA = SkyData()
     if not SKYDATA.valid:
         logger.error('Unable to load star/planet data, aborting.')
