@@ -89,6 +89,8 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 @click.argument('obsids', type=int, nargs=-1)
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
 @click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
+@click.option('--fps', type=int, default=10, help='Movie frames per second (default 10)')
+@click.option('--mps', type=int, default=10, help='Movie speed, in minutes of observing time per second of movie (default 10)')
 @click.option('--gleamsources', is_flag=True, help='Show GLEAM sources as blue dots')
 @click.option('--text', type=str, default=skymap.DEFAULT_PLOT_TEXT, help='Text to show on plot, instead of the default')
 @click.option('--inverse', is_flag=True, help='Show HASLAM map as black-on-white')

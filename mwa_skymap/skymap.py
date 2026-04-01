@@ -726,6 +726,7 @@ def plot_MWA_obs_frame(obsinfo=None,
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
     if obsinfo:
+        print('rendering obsid: %s' % obsinfo['starttime'])
         all_delays = []
         all_channels = []
         r_list = list(obsinfo['rfstreams'].keys())
@@ -776,6 +777,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                                               'freq_mhz':'N/A',
                                               'constellation':'N/A'}
     else:
+        print('No observation info provided')
         plot_text = None
         voltage_beams = None
 
@@ -800,8 +802,8 @@ def mwa_apng_adaptive(outfile=None,
                       startgps=None,
                       stopgps=None,
                       obsinfo_list=None,
-                      max_frame_duration=500,  # Maximum number of milliseconds per frame
-                      frame_speed=100,  # Number of milliseconds of video per minute of actual observing time
+                      fps=2,   # frames per second
+                      mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
                       gleamsources=False,
                       plot_text_template=DEFAULT_PLOT_TEXT,
                       inverse=False,
@@ -821,8 +823,8 @@ def mwa_apng_adaptive(outfile=None,
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
     :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
     :param obsinfo_list:  A list of observation information structures, each describing a single observation
-    :param max_frame_duration: Longest time (in milliseconds) to display a single frame - will be shorter if a repointing happens
-    :param frame_speed: Number of milliseconds of video per minute of actual observing time
+    :param fps: Number of frames per second of playing time in the output video
+    :param mps: Number of minutes of actual observing time per second of movie
     :param gleamsources:  If True, show the GLEAM source list as blue dots
     :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
     :param inverse:  If True, plot the Haslam radio image in white-on-black
@@ -849,7 +851,7 @@ def mwa_apng_adaptive(outfile=None,
         stopgps = observations[obsid_list[-1]]['stoptime'] + 8
 
     obsid_list.sort()
-    sec_per_frame = int(60 * max_frame_duration / frame_speed)
+    sec_per_frame = int(mps * 60 / fps)   # Number of seconds of observing time per frame
 
     frame_list = []   # Will contain tuples of (obsid, viewgps, duration_seconds)
     if startgps < obsid_list[0]:
@@ -891,7 +893,7 @@ def mwa_apng_adaptive(outfile=None,
                                       plotsize=plotsize,
                                       img_format='png',
                                       logger=logger)
-        o_im.append(apng.PNG.from_bytes(im_frame), delay=int(dur_sec * frame_speed / 60.0))
+        o_im.append(apng.PNG.from_bytes(im_frame), delay=int(dur_sec * (1000 / fps) / sec_per_frame))
 
     if not outfile:
         return o_im.to_bytes()
@@ -904,8 +906,8 @@ def mwa_mpeg(outfile=None,
              startgps=None,
              stopgps=None,
              obsinfo_list=None,
-             frame_rate=2,   # frames per second
-             frame_speed=100,  # Number of milliseconds of video per minute of actual observing time (default=100, or 10 minutes per second)
+             fps=2,   # frames per second
+             mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
              gleamsources=False,
              plot_text_template=DEFAULT_PLOT_TEXT,
              inverse=False,
@@ -925,8 +927,8 @@ def mwa_mpeg(outfile=None,
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
     :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
     :param obsinfo_list:  A list of observation information structures, each describing a single observation
-    :param frame_rate: Number of frames per second of playing time in the output video
-    :param frame_speed: Number of milliseconds of video per minute of actual observing time
+    :param fps: Number of frames per second of playing time in the output video
+    :param mps: Number of minutes of actual observing time per second of movie
     :param gleamsources:  If True, show the GLEAM source list as blue dots
     :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
     :param inverse:  If True, plot the Haslam radio image in white-on-black
@@ -944,7 +946,7 @@ def mwa_mpeg(outfile=None,
         obsid_list.append(obs['starttime'])
 
     obsid_list.sort()
-    sec_per_frame = int((60000 / frame_rate) / frame_speed)   # Number of seconds of observing time per frame
+    sec_per_frame = int(mps * 60 / fps)   # Number of seconds of observing time per frame
 
     if not startgps:   # Default to start of the first observation
         startgps = obsid_list[0]
@@ -973,7 +975,7 @@ def mwa_mpeg(outfile=None,
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(outfile, mode='I', format='FFMPEG', fps=frame_rate)
+            output = iio.get_writer(outfile, mode='I', format='FFMPEG', fps=fps)
     else:
         buf = io.BytesIO()
         if got_vaapi:
@@ -985,7 +987,7 @@ def mwa_mpeg(outfile=None,
                                           'format=gray|nv12,hwupload'],
                            pixelformat='vaapi_vld')
         else:
-            output = iio.get_writer(buf, mode='I', format='FFMPEG', fps=frame_rate)
+            output = iio.get_writer(buf, mode='I', format='FFMPEG', fps=fps)
 
     for f in frame_list:
         oid, vgps = f
