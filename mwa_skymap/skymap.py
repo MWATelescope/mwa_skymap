@@ -726,7 +726,7 @@ def plot_MWA_obs_frame(obsinfo=None,
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
     if obsinfo:
-        print('rendering obsid: %s' % obsinfo['starttime'])
+        print('rendering obsid: %s at %s' % (obsinfo['starttime']. viewgps))
         all_delays = []
         all_channels = []
         r_list = list(obsinfo['rfstreams'].keys())
@@ -762,32 +762,34 @@ def plot_MWA_obs_frame(obsinfo=None,
         if not viewgps:   # Default to midpoint of observation
             viewgps = (obsinfo['starttime'] + obsinfo['stoptime']) / 2
 
-        if obsinfo:
-            plot_text = plot_text_template % {'obsid':obsinfo['starttime'],
-                                              'viewgps_gps':viewgps,
-                                              'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
-                                              'obsname':obsinfo['obsname'],
-                                              'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
-                                              'constellation':constellation[1]}
-        else:
-            plot_text = plot_text_template % {'obsid':'N/A',
-                                              'viewgps_gps': viewgps,
-                                              'viewgps_utc': Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
-                                              'obsname':'N/A',
-                                              'freq_mhz':'N/A',
-                                              'constellation':'N/A'}
+        plot_text = plot_text_template % {'obsid':obsinfo['starttime'],
+                                          'viewgps_gps':viewgps,
+                                          'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
+                                          'obsname':obsinfo['obsname'],
+                                          'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
+                                          'constellation':constellation[1]}
     else:
-        print('No observation info provided')
-        plot_text = None
-        voltage_beams = None
+        plot_text = plot_text_template % {'obsid':'N/A',
+                                          'viewgps_gps': viewgps,
+                                          'viewgps_utc': Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
+                                          'obsname':'N/A',
+                                          'freq_mhz':'N/A',
+                                          'constellation':'N/A'}
 
-    return plot_MWA_skymap(delays=None,
-                           channels=None,
+        print('No observation info provided, renering at time %s' % viewgps)
+        all_delays = None
+        all_channels = None
+        voltage_beams = None
+        ra_pc = None
+        dec_pc = None
+
+    return plot_MWA_skymap(delays=all_delays,
+                           channels=all_channels,
                            viewgps=viewgps,
                            gleamsources=gleamsources,
                            plot_text=plot_text,
-                           ra_pc=None,
-                           dec_pc=None,
+                           ra_pc=ra_pc,
+                           dec_pc=dec_pc,
                            voltage_beams=voltage_beams,
                            inverse=inverse,
                            background=background,
