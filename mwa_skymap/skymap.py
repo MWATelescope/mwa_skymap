@@ -10,7 +10,7 @@ import warnings
 
 import apng
 
-import imageio.v2 as iio
+import imageio.v3 as iio
 
 warnings.filterwarnings("ignore")
 
@@ -964,56 +964,87 @@ def mwa_mpeg(outfile=None,
             oid = 9999999999
         frame_list.append((oid, tgps))
 
-    got_vaapi = os.path.exists('/dev/dri/renderD128')
-    buf = None
-    output = None
+    # got_vaapi = os.path.exists('/dev/dri/renderD128')
+    # buf = None
+    # output = None
+    # if outfile:
+    #     if got_vaapi:
+    #         iio.get_writer(outfile, format='FFMPEG', mode='I', fps=1,
+    #                        codec='h264_vaapi',
+    #                        input_params=[ '-stream_loop', '-1'],
+    #                        output_params=['-vaapi_device',
+    #                                       '/dev/dri/renderD128',
+    #                                       '-vf',
+    #                                       'format=gray|nv12,hwupload'],
+    #                        pixelformat='vaapi_vld')
+    #     else:
+    #         output = iio.get_writer(outfile, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
+    # else:
+    #     buf = io.BytesIO()
+    #     if got_vaapi:
+    #         iio.get_writer(buf, format='FFMPEG', mode='I', fps=1,
+    #                        codec='h264_vaapi',
+    #                        input_params=[ '-stream_loop', '-1'],
+    #                        output_params=['-vaapi_device',
+    #                                       '/dev/dri/renderD128',
+    #                                       '-vf',
+    #                                       'format=gray|nv12,hwupload'],
+    #                        pixelformat='vaapi_vld')
+    #     else:
+    #         output = iio.get_writer(buf, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
+
+    # for f in frame_list:
+    #     oid, vgps = f
+    #     im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
+    #                                   viewgps=vgps,
+    #                                   gleamsources=gleamsources,
+    #                                   plot_text_template=plot_text_template,
+    #                                   inverse=inverse,
+    #                                   background=background,
+    #                                   hidenulls=hidenulls,
+    #                                   beam_type=beam_type,
+    #                                   plotsize=plotsize,
+    #                                   img_format='png',
+    #                                   logger=logger)
+    #     output.append_data(iio.imread(im_frame))
+    #
+    # if outfile:
+    #     output.close()
+    #     return ''
+    # else:
+    #     buf.seek(0)
+    #     return buf.read()
+
     if outfile:
-        if got_vaapi:
-            iio.get_writer(outfile, format='FFMPEG', mode='I', fps=1,
-                           codec='h264_vaapi',
-                           input_params=[ '-stream_loop', '-1'],
-                           output_params=['-vaapi_device',
-                                          '/dev/dri/renderD128',
-                                          '-vf',
-                                          'format=gray|nv12,hwupload'],
-                           pixelformat='vaapi_vld')
-        else:
-            output = iio.get_writer(outfile, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
+        ofile = outfile
     else:
-        buf = io.BytesIO()
-        if got_vaapi:
-            iio.get_writer(buf, format='FFMPEG', mode='I', fps=1,
-                           codec='h264_vaapi',
-                           input_params=[ '-stream_loop', '-1'],
-                           output_params=['-vaapi_device',
-                                          '/dev/dri/renderD128',
-                                          '-vf',
-                                          'format=gray|nv12,hwupload'],
-                           pixelformat='vaapi_vld')
-        else:
-            output = iio.get_writer(buf, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
+        ofile = io.BytesIO()
 
-    for f in frame_list:
-        oid, vgps = f
-        im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
-                                      viewgps=vgps,
-                                      gleamsources=gleamsources,
-                                      plot_text_template=plot_text_template,
-                                      inverse=inverse,
-                                      background=background,
-                                      hidenulls=hidenulls,
-                                      beam_type=beam_type,
-                                      plotsize=plotsize,
-                                      img_format='png',
-                                      logger=logger)
-        output.append_data(iio.imread(im_frame))
+    with iio.imopen(ofile, "w", plugin="pyav") as file:
+        file.init_video_stream("libx264", fps=fps, max_keyframe_interval=fps, force_keyframes=True)
+        file.container_metadata["comment"] = "This video was created using mwa_skymap."
+
+        for f in frame_list:
+            oid, vgps = f
+            im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
+                                          viewgps=vgps,
+                                          gleamsources=gleamsources,
+                                          plot_text_template=plot_text_template,
+                                          inverse=inverse,
+                                          background=background,
+                                          hidenulls=hidenulls,
+                                          beam_type=beam_type,
+                                          plotsize=plotsize,
+                                          img_format='png',
+                                          logger=logger)
+            file.write_frame(iio.imread(im_frame))
 
     if outfile:
-        output.close()
+        file.close()
         return ''
     else:
-        buf.seek(0)
-        return buf.read()
+        ofile.seek(0)
+        return ofile.read()
 
 
 """
