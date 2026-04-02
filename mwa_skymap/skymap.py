@@ -1037,7 +1037,7 @@ def mwa_mpeg(outfile=None,
                                           plotsize=plotsize,
                                           img_format='png',
                                           logger=logger)
-            file.write_frame(iio.imread(im_frame))
+            file.write_frame(iio.imread(im_frame)[:, :, :3])
 
     if outfile:
         file.close()
