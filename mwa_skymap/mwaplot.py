@@ -718,7 +718,7 @@ def plot_MWA_skymap(delays=None,
 
     if plot_text:
         ax1.text(x=0,
-                 y=bmap.ymax - 2e5,
+                 y=bmap.ymax + 2e5,
                  s=plot_text,
                  fontsize=10 * plotscale,
                  color=fontcolor)
