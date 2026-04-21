@@ -24,7 +24,7 @@ dependencies = [
 Source = "https://github.com/MWATelescope/mwa_skymap"
 
 [project.scripts]
-plotmwa = "mwa_skymap.plotmwa:cli"
+plotmwa = "mwa_skymap.skymap:cli"
 
 [build-system]
 requires = ["flit_core<4"]
