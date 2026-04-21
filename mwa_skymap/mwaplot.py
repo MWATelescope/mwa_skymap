@@ -672,14 +672,15 @@ def plot_MWA_skymap(delays=None,
 
         if source.align == 'l':
             hoffset = 2e5
-        elif source.align == 'c':
-            hoffset = 0
         elif source.align == 'r':
             hoffset = -2e5
+        else:
+            hoffset = 0
 
         xx, yy = bmap(r * 15 - 360, d)
         try:
             if xx < 1e30 and yy < 1e30:
+                print(source.name, xx, yy, hoffset)
                 bmap.scatter(2 * X0 - xx, yy, s=source.size * plotscale, c=color, alpha=1.0, latlon=False, edgecolor='none')
                 ax1.text(x=bmap.xmax - xx + hoffset,
                          y=yy,
