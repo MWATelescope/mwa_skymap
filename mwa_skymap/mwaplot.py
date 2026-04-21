@@ -91,7 +91,7 @@ if mwa_hyperbeam:
         else:
             BEAMS['HBFEE'] = mwa_hyperbeam.FEEBeam()
     except:
-        print('Failed to load the hyperbeam FEE beam - you probably need to run "plotmwa getbeamfile" first.')
+        print('Failed to load the hyperbeam FEE beam - you probably need to run "skymap getbeamfile" first.')
 
 try:
     from mwa_pb import primary_beam
@@ -109,6 +109,7 @@ class Source():
         - dec: Declination of the source, in degrees, as a sexagesimal string, e.g. '-12:34:56.78'
         - color: color of the marker in normal plots
         - icolor: Color of the marker in 'inverse' mode (black on white)
+        - size: size of the marker
         - fontsize: font size of the label
         - align: alignment of the label ('l', 'c', or 'r')
 
@@ -116,11 +117,12 @@ class Source():
         of color (if color is 'white', icolor will be 'black', and vice versa). Otherwise, icolor will be set to
         the same value as color.
     """
-    def __init__(self, name, ra, dec, color='white', icolor=None, fontsize=8, align='l'):
+    def __init__(self, name, ra, dec, color='white', icolor=None, size=40, fontsize=8, align='l'):
         self.name = name
         self.ra = ra
         self.dec = dec
         self.color = color
+        self.size = size
         if icolor is None:
             if color in ['w', 'white']:
                 self.icolor = 'black'
@@ -671,6 +673,7 @@ def plot_MWA_skymap(delays=None,
         xx, yy = bmap(r * 15 - 360, d)
         try:
             if xx < 1e30 and yy < 1e30:
+                bmap.scatter(2 * X0 - xx, yy, s=source.size * plotscale, c=color, alpha=1.0, latlon=False, edgecolor='none')
                 ax1.text(x=bmap.xmax - xx + 2e5,
                          y=yy,
                          s=source.name,
