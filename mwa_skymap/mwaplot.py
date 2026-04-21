@@ -713,7 +713,7 @@ def plot_MWA_skymap(delays=None,
 def plot_MWA_obs_frame(obsinfo=None,
                        viewgps=None,
                        gleamsources=False,
-                       plot_text_template=DEFAULT_PLOT_TEXT,
+                       plot_text_template=None,
                        inverse=False,
                        background='black',
                        hidenulls=False,
@@ -753,6 +753,9 @@ def plot_MWA_obs_frame(obsinfo=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
+    if plot_text_template is None:
+        plot_text_template = DEFAULT_PLOT_TEXT
+
     if obsinfo:
         print('rendering obsid: %s at %s' % (obsinfo['starttime'], viewgps))
         all_delays = []
@@ -835,7 +838,7 @@ def mwa_apng_adaptive(outfile=None,
                       fps=2,   # frames per second
                       mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
                       gleamsources=False,
-                      plot_text_template=DEFAULT_PLOT_TEXT,
+                      plot_text_template=None,
                       inverse=False,
                       background='black',
                       hidenulls=False,
@@ -865,6 +868,9 @@ def mwa_apng_adaptive(outfile=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
+    if plot_text_template is None:
+        plot_text_template = DEFAULT_PLOT_TEXT
+
     observations = {None:{}}
     obsid_list = []
     for obs in obsinfo_list:
@@ -939,7 +945,7 @@ def mwa_mpeg(outfile=None,
              fps=2,   # frames per second
              mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
              gleamsources=False,
-             plot_text_template=DEFAULT_PLOT_TEXT,
+             plot_text_template=None,
              inverse=False,
              background='black',
              hidenulls=False,
@@ -969,6 +975,9 @@ def mwa_mpeg(outfile=None,
     :param logger: Optional logging.Logger() instance
     :return: An empty string (if outfile is specified) or a byte array (if outfile is not specified)
     """
+    if plot_text_template is None:
+        plot_text_template = DEFAULT_PLOT_TEXT
+
     observations = {9999999999:None}
     obsid_list = [9999999999]
     for obs in obsinfo_list:
