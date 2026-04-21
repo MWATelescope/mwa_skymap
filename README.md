@@ -30,6 +30,7 @@ Features include:
     or 'MWA_PB' (mwa_pb analytic).
   * You can specify a specific coarse channel to use for the beam model (defaults to 
     the 13th channel in the observation).
+  * Choice of white, black or transparent background.
 
 # Getting started:
 
