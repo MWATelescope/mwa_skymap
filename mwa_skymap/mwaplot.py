@@ -198,10 +198,10 @@ class SkyData(object):
             'HydA': Source(name='Hyd A', ra='09:18:05.65', dec='-12:05:43.9', fontsize=10, align='l'),
             'For A': Source(name='For A (double)', ra='03:22:41.52', dec='-37:12:33.5', align='l'),
             'PicA': Source(name='Pic A', ra='05:19:49.73', dec='-45:46:43.7', fontsize=10, align='l'),
-            'EOR0': Source(name='EoR0', ra='00:00:00', dec='-27:00:00', size=20, fontsize=12, align='c', color='yellow', icolor='darkorange'),
-            'EOR1': Source(name='EoR1', ra='04:00:00', dec='-30:00:00', size=20, fontsize=12, align='c', color='yellow', icolor='darkorange'),
-            'EOR2': Source(name='EoR2', ra='10:20:00', dec='-10:00:00', size=20, fontsize=12, align='c', color='yellow', icolor='darkorange'),
-            'EOR3': Source(name='EoR2', ra='01:00:00', dec='-27:00:00', size=20, fontsize=12, align='c', color='yellow', icolor='darkorange'),
+            'EOR0': Source(name='EoR0', ra='00:00:00', dec='-27:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
+            'EOR1': Source(name='EoR1', ra='04:00:00', dec='-30:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
+            'EOR2': Source(name='EoR2', ra='10:20:00', dec='-10:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
+            'EOR3': Source(name='EoR2', ra='01:00:00', dec='-27:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
             'PupA': Source(name='Pup A\n(resolved)', ra='08:24:07', dec='-42:59:48'),
             '3C161': Source(name='3C 161', ra='06:27:10.09', dec='-05:53:04.7', align='r'),
             'M42': Source(name='M42/Orion', ra='05:35:17.3', dec='-05:23:28'),
@@ -680,7 +680,6 @@ def plot_MWA_skymap(delays=None,
         xx, yy = bmap(r * 15 - 360, d)
         try:
             if xx < 1e30 and yy < 1e30:
-                print(source.name, xx, yy, source.align, hoffset)
                 bmap.scatter(2 * X0 - xx, yy, s=source.size * plotscale, c=color, alpha=1.0, latlon=False, edgecolor='none')
                 ax1.text(x=bmap.xmax - xx + hoffset,
                          y=yy,
