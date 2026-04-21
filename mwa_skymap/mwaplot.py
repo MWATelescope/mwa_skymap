@@ -670,9 +670,9 @@ def plot_MWA_skymap(delays=None,
         else:
             color = source.color
 
-        if source.align == 'l':
+        if source.align == 'left':
             hoffset = 2e5
-        elif source.align == 'r':
+        elif source.align == 'right':
             hoffset = -2e5
         else:
             hoffset = 0
