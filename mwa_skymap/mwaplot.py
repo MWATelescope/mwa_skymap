@@ -46,10 +46,10 @@ RADIO_IMAGE_LOW = 100     # Value in RADIO_IMAGE_FILE below which is considered 
 RADIO_IMAGE_HIGH = 10000  # Value in RADIO_IMAGE_FILE above which is considered white
 if os.getenv('MWA_BEAM_FILE'):
     MWA_BEAM_FILE = os.getenv('MWA_BEAM_FILE')
-elif os.path.exists(os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')):
-    MWA_BEAM_FILE = os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')
 else:
-    MWA_BEAM_FILE = None
+    MWA_BEAM_FILE = os.path.join(DATA_DIR, 'mwa_full_embedded_element_pattern.h5')
+
+
 MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93", lat="-26:42:11.95", height=377.8)
 
 # noinspection PyUnresolvedReferences
@@ -86,7 +86,7 @@ if mwa_hyperbeam:
         pass
 
     try:
-        if MWA_BEAM_FILE:
+        if os.path.exists(MWA_BEAM_FILE):
             BEAMS['HBFEE'] = mwa_hyperbeam.FEEBeam(MWA_BEAM_FILE)
         else:
             BEAMS['HBFEE'] = mwa_hyperbeam.FEEBeam()
