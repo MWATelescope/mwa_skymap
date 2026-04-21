@@ -664,9 +664,10 @@ def plot_MWA_skymap(delays=None,
         # noinspection PyUnresolvedReferences
         d = Latitude(angle=source.dec, unit=astropy.units.deg).deg
 
-        color = source.color
-        if inverse and color == 'w':
-            color = 'black'
+        if inverse:
+            color = source.icolor
+        else:
+            color = source.color
 
         xx, yy = bmap(r * 15 - 360, d)
         try:
