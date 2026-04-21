@@ -123,12 +123,14 @@ class Source():
         self.dec = dec
         self.color = color
         if icolor is None:
-            if color == 'white':
+            if color in ['w', 'white']:
                 self.icolor = 'black'
-            elif color == 'black':
+            elif color in ['k', 'black']:
                 self.icolor = 'white'
             else:
-                self.icolor = icolor
+                self.icolor = color
+        else:
+            self.icolor = icolor
         self.fontsize = fontsize
         self.align = {'l':'left', 'c':'center', 'r':'right'}[align]
 
