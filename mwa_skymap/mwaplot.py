@@ -194,6 +194,9 @@ class SkyData(object):
         self.gleamcolor = 'lightblue'
         self.gleamicolor = 'darkblue'
 
+        self.pccolor = 'turquoise'
+        self.pcicolor = 'teal'
+
         self.sources = {
             'HydA': Source(name='Hyd A', ra='09:18:05.65', dec='-12:05:43.9', fontsize=10, align='l'),
             'For A': Source(name='For A (double)', ra='03:22:41.52', dec='-37:12:33.5', align='l'),
@@ -573,17 +576,22 @@ def plot_MWA_skymap(delays=None,
         newx, newy = bmap(ra_pc, dec_pc)
         good = (newx > bmap.xmin) & (newx < bmap.xmax) & (newy > bmap.ymin) & (newy < bmap.ymax)
 
+        if inverse:
+            color = SKYDATA.pcicolor
+        else:
+            color = SKYDATA.pccolor
+
         if good:
             bmap.scatter(bmap.xmax - newx, newy,
                          50.0 * plotscale,
-                         'turquoise',
+                         color,
                          edgecolor='none',
                          alpha=0.5)
             ax1.text(bmap.xmax - newx - 2e5, newy,
                      'PC',
                      horizontalalignment='right',
                      fontsize=12 * plotscale,
-                     color='turquoise',
+                     color=color,
                      alpha=0.5,
                      verticalalignment='center')
 
