@@ -33,11 +33,11 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 
-# This will work provided you don't install it in some wierd way that leaves the
+# This will work provided you don't install it in some weird way that leaves the
 # files in a zip-file or other compressed format. If you want to do that, you can
 # work out how to do this bit, because I've fought importlib.resources long enough,
 # and gave up in horror at the sheer volume of overly complicated, badly documented
-# crap in you need to go through.
+# crap.
 
 DATA_DIR = os.path.join(os.path.split(__file__)[0], 'data')
 GLEAMCAT_FILE = os.path.join(DATA_DIR, 'G4Jy_catalogue_allEGCcolumns.fits')
@@ -63,7 +63,7 @@ SKYDATA = None   # Will be an instance of SkyData() after the first use
 
 DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)d at %(viewgps_utc)s:\n" +
                      "%(obsname)s at %(freq_mhz)s MHz\n" +
-                     "in the constellation %(constellation)s'")
+                     "in the constellation %(constellation)s")
 
 # Used for multiple primary beams - the first beam is green contours, the second is cyan, etc
 PBCOLORS = [(0.0, 1.0, 0.0),  # green
@@ -102,16 +102,21 @@ except ImportError:
 
 class Source():
     """
-    Represents a bright source to plot on the sky map, including the dot color, font size, and label alignment code
+    Represents a bright source to plot on the sky map, including the dot color, font size, and label alignment code.
+
+    To add your own sources to the plots, create instances of this source class, and either add them to the existing
+    soources in the SKYDATA.sources dictionary, or create a new dictionary of your sources and assign it to
+    SKYDATA.sources.
 
     Attributes are:
         - ra: Right ascension of the source, in hours, as a sexagesimal string, e.g. '12:34:56.78'
         - dec: Declination of the source, in degrees, as a sexagesimal string, e.g. '-12:34:56.78'
-        - color: color of the marker in normal plots
-        - icolor: Color of the marker in 'inverse' mode (black on white)
-        - size: size of the marker
-        - fontsize: font size of the label
-        - align: alignment of the label ('l', 'c', or 'r')
+        - color: string, color of the marker and label in normal plots, using matplotlib color codes (see
+                 https://matplotlib.org/stable/gallery/color/named_colors.html)
+        - icolor: string, color of the marker and label in 'inverse' mode (black on white)
+        - size: size of the marker, eg 10, for a small dot (scaled by the plotscale option)
+        - fontsize: font size of the label (scaled by the plotscale option)
+        - align: horizontalalignment of the label ('l', 'c', or 'r') for left, center, or right alignment
 
         If icolor is not given, and color is either 'white' or 'black, then icolor will be set to the opposite
         of color (if color is 'white', icolor will be 'black', and vice versa). Otherwise, icolor will be set to
@@ -154,7 +159,7 @@ class SkyData(object):
     ----------------
     """
     def __init__(self, logger=DEFAULTLOGGER):
-        self.valid = True
+        self.valid = True   # Will be set to False if any errors are encountered loading the data files
 
         # Read the GLEAM source list
         try:
@@ -169,6 +174,7 @@ class SkyData(object):
             logger.error('Could not find GLEAM data')
             self.valid = False
 
+        # Load the background radio image
         try:
             self.radio_image = fits.open(RADIO_IMAGE_FILE)
 
@@ -187,13 +193,15 @@ class SkyData(object):
                                     unit=(astropy.units.deg, astropy.units.deg))
             self.mapgrid.location = MWAPOS
         except:
-            logger.error('Cannot open Haslam image')
+            logger.error('Cannot open radio image')
             traceback.print_exc()
             self.valid = False
 
+        # Set the colors for the GLEAM sources, in both normal and inverse modes
         self.gleamcolor = 'lightblue'
         self.gleamicolor = 'darkblue'
 
+        # Set the colors for the phase center, in both normal and inverse modes
         self.pccolor = 'turquoise'
         self.pcicolor = 'teal'
 
@@ -201,10 +209,13 @@ class SkyData(object):
             'HydA': Source(name='Hyd A', ra='09:18:05.65', dec='-12:05:43.9', fontsize=10, align='l'),
             'For A': Source(name='For A (double)', ra='03:22:41.52', dec='-37:12:33.5', align='l'),
             'PicA': Source(name='Pic A', ra='05:19:49.73', dec='-45:46:43.7', fontsize=10, align='l'),
+
+            # Set the marker size as zero for the EOR fields, because there's no sources there
             'EOR0': Source(name='EoR0', ra='00:00:00', dec='-27:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
             'EOR1': Source(name='EoR1', ra='04:00:00', dec='-30:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
             'EOR2': Source(name='EoR2', ra='10:20:00', dec='-10:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
             'EOR3': Source(name='EoR2', ra='01:00:00', dec='-27:00:00', size=0, fontsize=12, align='c', color='yellow', icolor='darkorange'),
+
             'PupA': Source(name='Pup A\n(resolved)', ra='08:24:07', dec='-42:59:48'),
             '3C161': Source(name='3C 161', ra='06:27:10.09', dec='-05:53:04.7', align='r'),
             'M42': Source(name='M42/Orion', ra='05:35:17.3', dec='-05:23:28'),
@@ -366,8 +377,8 @@ def get_beam(Alt, Az, delays, freq_Hz, beam_type=list(BEAMS.keys())[0], logger=D
     Depending on the value of the beam_type argument, this function uses one of mwa_pb.primarybeam.MWA_Tile_analytic (MWA_PB),
     mwa_hyperbeam.AnalyticBeam (HBA) or mwa_hyperbeam.FEEBeam (HBFEE).
 
-    :param Alt: numpy array of altitude values, in degrees
-    :param Az: numpy array of elevation values in degrees, with the same shape as Alt
+    :param Alt: 2-dimensional numpy array of altitude values, in degrees
+    :param Az: 2-dimensional numpy array of elevation values in degrees, with the same shape as Alt
     :param delays: list of 16 dipole delay values
     :param freq_Hz: Frequency in Hz
     :param beam_type: One of 'HBA' or 'HBFEE' for Hyperbeam analytic or FEE, or 'MWA_PB' for mwa_pb.primary beam analytic
@@ -450,6 +461,10 @@ def plot_MWA_skymap(delays=None,
     skymap.SkyData() that can be loaded and customised. If not pre-loaded into the global, it will be loaded and
     cached the first time this function is called.
 
+    This function does not rely on the observation being already in the telescope schedule - instead, the caller
+    passes in the relevant details (dipole delays, coarse channel, etc) to generate the primary beam. That means
+    this function can be used to plan observations before scheduling them.
+
     The MWA primary beam is plotted in contours over this background.
 
     If the 'delays' and 'channels' parameters are given, for one or more primary MWA beams, the
@@ -458,19 +473,16 @@ def plot_MWA_skymap(delays=None,
     dipole delay values, one per primary beam. The 'channels' parameter can either be a single MWA channel number,
     or a list of MWA channel numbers, one per primary beam.
 
-    If the 'primary_beams' parameter is given, it must be a numpy array as returned by get_beam(), or a list of those
-    numpy arrays. The 'delays' and 'channels' parameters are then only used to populate the text in the sky map plot.
-
     If the voltage_beams parameter is provided, it should be a dictionary of voltage beams with key=beam_number,
-    each a dict with 'ra', 'dec', and 'name' items, containing beam RA and Dec in degrees, and name as a string. These
+    each value being a dict with 'ra', 'dec', and 'name' items, containing beam RA and Dec in degrees, and name as a string. These
     will be plotted as white circles, and labeled with the beam number and name.
 
     If ra_pc and dec_pc are provided, they should be the RA and Dec of the phase center in degrees. This will be
     plotted as a cyan circle.
 
-    The map PNG image is returned as a byte array.
+    The map image is returned as a byte array, in a format defined by the 'img_format' parameter (eg 'jpeg').
 
-    The rest of the parameters are optional, and described below.
+    The rest of the parameters described below.
 
     :param delays: Either a list of 16 dipole delays (for a single primary beam), or a list of lists of dipole delays, one per primary beam
     :param channels: Either a single MWA channel number, or a list of MWA channel numbers, one per primary beam
@@ -746,6 +758,9 @@ def plot_MWA_obs_frame(obsinfo=None,
     Given an MWA observation info structure, with one or more rf_streams (primary beams), generate a skymap of the
     observation at the single time specified by viewgps.
 
+    This function gets most of its data from the 'obsinfo' structure, as returned by the metadata web service, but
+    the caller can create a minimal structure from scratch if they want to plot observations not yet scheduled.
+
     Most of the work is done by plot_MWA_skymap() function, this code just extracts:
         - a list of dipole delays from the rf_streams, or if there's more than one primary beam, a list of lists of dipole delays
         - a dict of voltage beams, if any, in the observation
@@ -760,6 +775,12 @@ def plot_MWA_obs_frame(obsinfo=None,
         obsname        Observation name
         freq_mhz       Centre channel frequency in MHz
         constellation  Name of the constellation that the phase centre is located in.
+    The default plot_text_template is
+        'Obs ID %(obsid)d at %(viewgps_utc)s:\n%(obsname)s at %(freq_mhz)s MHz\nin the constellation %(constellation)s'
+    which might result in this text in the plot:
+        Obs ID 1441333936 at 2025-09-08 02:33 UT:
+        morgan2024A_ips_SSW)AzEl0.0,76.0_Ch[57,58,...,131,132] at 154.88 MHz
+        in the constellation Hydra
 
     :param obsinfo:  An MWA observation info structure, eg from the /metadata/obs web service, tilestatus.getObservationInfo()
     :param viewgps:  The GPS time in seconds for which the plot should be generated (default is the observation midpoint time)
@@ -876,7 +897,11 @@ def mwa_apng_adaptive(outfile=None,
     for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
 
     Each frame in an animated PNG can have its own individual duration, so new frames are generated on every new obsid, and
-    also after every five minutes of actual observing time if the observation/s are longer than five minutes.
+    also after every few minutes (mps / fps)  actual observing time if the observation/s is longer than that.
+
+    Note that animated PNGs are not supported by all image viewers, and may not work on all systems. Thay also lead
+    to very large file sizes for long movies. You will probably only want to generate animated PNGs for short
+    movies, where you want repointing times to be precisely represented at the start of each observation.
 
     :param outfile: Output filename, or if not supplied, the image is returned as a byte array
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
@@ -985,8 +1010,10 @@ def mwa_mpeg(outfile=None,
     Given a list of observation info structures (assumed to be consecutive observations), generate an animated PNG of the skymaps
     for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
 
-    Each frame in an animated PNG can have its own individual duration, so new frames are generated on every new obsid, and
-    also after every five minutes of actual observing time if the observation/s are longer than five minutes.
+    Note that all frames in an MPEG movie are displayed for the same amount of time, so each frame shows the primary
+    beam pointed by the most recent observation at the start of that frame. Each frame represents (mps / fps) minutes
+    of actual observing time. The default is 10 minutes of actual time per second of movie, shown in two frames per second
+    each representing five minutes of actual time).
 
     :param outfile: Output filename, or if not supplied, the image is returned as a byte array
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
@@ -1063,40 +1090,3 @@ def mwa_mpeg(outfile=None,
         ofile.seek(0)
         return ofile.read()
 
-
-"""
-import requests
-import json
-import time
-from mwa_skymap import skymap
-# obsid = 1456747216
-# obsid = 1454999592
-obsid = 1456774216
-obs = obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).text)
-for beam_type in ['MWA_PB', 'HBA', 'HBFEE']:
-    st = time.time()
-    im = skymap.plot_MWA_obs_frame(beam_type=beam_type, obsinfo=obs)
-    et = time.time()
-    print('Beam type %s: %0.3f seconds' % (beam_type, et - st))
-    f = open('/tmp/%d_%s.png' % (obsid, beam_type), 'wb')
-    _ = f.write(im)
-    f.close()
-    
-import json
-import requests
-from mwa_skymap import skymap
-# obsid_list = [1456774216]
-obsid_list = [1458492896, 1458493496, 1458494096, 1458494696, 1458495296, 1458495896, 1458496496, 1458497096, 1458497696, 
-              1458498296, 1458498896, 1458499496, 1458500096, 1458500696, 1458501296, 1458501896, 1458502496, 1458503096, 
-              1458503696, 1458504296, 1458504896, 1458505496, 1458506096, 1458506696]
-obsinfo_list = []
-for obsid in obsid_list:
-    obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).text)
-    obsinfo_list.append(obs)
-    
-skymap.mwa_apng_adaptive(obsinfo_list=obsinfo_list, outfile='/tmp/%d-skymap-animated.png' % obsid_list[0])
-
-
-
-
-"""
