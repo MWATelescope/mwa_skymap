@@ -50,6 +50,7 @@ def beamtypes():
 @cli.command()
 @click.argument('obsid', type=int, default=0)
 @click.option('--viewgps', type=int, default=None, help='Plot reference time in GPS seconds (defaults to observation midpoint)')
+@click.option('--cchan', type=int, default=None, help='Coarse channel number (defaults to 13th channel in observation)')
 @click.option('--gleamsources', is_flag=True, help='Show GLEAM sources as blue dots')
 @click.option('--text', type=str, default=None, help='Text to show on plot, instead of the default')
 @click.option('--inverse', is_flag=True, help='Show HASLAM map as black-on-white')
@@ -58,7 +59,7 @@ def beamtypes():
 @click.option('--beam_type', type=str, default='HBA', help="One of %s" % (', '.join(mwaplot.BEAMS.keys())))
 @click.option('--plotsize', type=int, default=1200, help='Plot width and height in pixels (default 1200)')
 @click.option('--outfile', type=str, default=None, help='Output filename, default is <obsid>.png - extension determines file type')
-def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
+def single(obsid, viewgps, cchan, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
     """
     Plots a single observation, as a single still frame
     """
@@ -72,6 +73,7 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 
     im = mwaplot.plot_MWA_obs_frame(obsinfo=obs,
                                     viewgps=viewgps,
+                                    cchan=cchan,
                                     gleamsources=gleamsources,
                                     plot_text_template=text,
                                     inverse=inverse,
@@ -89,6 +91,7 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 @click.argument('obsids', type=int, nargs=-1)
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
 @click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
+@click.option('--cchan', type=int, default=None, help='Coarse channel number (defaults to 13th channel in observation)')
 @click.option('--fps', type=int, default=10, help='Movie frames per second (default 10)')
 @click.option('--mps', type=int, default=10, help='Movie speed, in minutes of observing time per second of movie (default 10)')
 @click.option('--gleamsources', is_flag=True, help='Show GLEAM sources as blue dots')
@@ -99,10 +102,12 @@ def single(obsid, viewgps, gleamsources, text, inverse, background, hidenulls, b
 @click.option('--beam_type', type=str, default='HBA', help="One of %s" % (', '.join(mwaplot.BEAMS.keys())))
 @click.option('--plotsize', type=int, default=1200, help='Plot width and height in pixels (default 1200)')
 @click.option('--outfile', type=str, default=None, help='Output filename - extension determines file type')
-def movie(obsids, startgps, stopgps, fps, mps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
+def movie(obsids, startgps, stopgps, cchan, fps, mps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
     """
     Plots a movie, either animated PNG or MPEG
     """
+    if not outfile:
+        outfile = '%d.png' % startgps
     img_format = outfile.split('.')[-1].upper()
 
     obsinfo_list = []
@@ -140,6 +145,7 @@ def movie(obsids, startgps, stopgps, fps, mps, gleamsources, text, inverse, back
                                        obsinfo_list=obsinfo_list,
                                        startgps=startgps,
                                        stopgps=stopgps,
+                                       cchan=cchan,
                                        fps=fps,
                                        mps=mps,
                                        gleamsources=gleamsources,
@@ -154,6 +160,7 @@ def movie(obsids, startgps, stopgps, fps, mps, gleamsources, text, inverse, back
                               obsinfo_list=obsinfo_list,
                               startgps=startgps,
                               stopgps=stopgps,
+                              cchan=cchan,
                               fps=fps,
                               mps=mps,
                               gleamsources=gleamsources,

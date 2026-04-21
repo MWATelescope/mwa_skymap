@@ -28,8 +28,7 @@ from astropy.time import Time
 
 import matplotlib
 
-if 'matplotlib.backends' not in sys.modules:
-    matplotlib.use('agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
@@ -715,6 +714,7 @@ def plot_MWA_skymap(delays=None,
 
 def plot_MWA_obs_frame(obsinfo=None,
                        viewgps=None,
+                       cchan=None,
                        gleamsources=False,
                        plot_text_template=None,
                        inverse=False,
@@ -745,6 +745,7 @@ def plot_MWA_obs_frame(obsinfo=None,
 
     :param obsinfo:  An MWA observation info structure, eg from the /metadata/obs web service, tilestatus.getObservationInfo()
     :param viewgps:  The GPS time in seconds for which the plot should be generated (default is the observation midpoint time)
+    :param cchan:  The coarse channel number (0-255) to use to generate the primary beam. Defaults to the 13th channel in the observation
     :param gleamsources:  If True, show the GLEAM source list as blue dots
     :param plot_text_template:  Template for text string summarising the observation data - see field names described above.
     :param inverse:  If True, plot the Haslam radio image in white-on-black
@@ -767,7 +768,10 @@ def plot_MWA_obs_frame(obsinfo=None,
         r_list.sort()
         for rfs_id in r_list:
             rfs = obsinfo['rfstreams'][rfs_id]
-            channel = rfs['frequencies'][12]
+            if cchan is None:
+                channel = rfs['frequencies'][12]
+            else:
+                channel = cchan   # Override the coarse channel for this primary beam with the specified channel
             # If the observation is in the future, calculate what delays will be used, instead of using the recorded actual delays
             if not rfs['xdelays']:
                 delays = calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
@@ -837,6 +841,7 @@ def plot_MWA_obs_frame(obsinfo=None,
 def mwa_apng_adaptive(outfile=None,
                       startgps=None,
                       stopgps=None,
+                      cchan=None,
                       obsinfo_list=None,
                       fps=2,   # frames per second
                       mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
@@ -858,6 +863,7 @@ def mwa_apng_adaptive(outfile=None,
     :param outfile: Output filename, or if not supplied, the image is returned as a byte array
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
     :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
+    :param cchan:  The coarse channel number (0-255) to use to generate the primary beam. Defaults to the 13th channel in the observation
     :param obsinfo_list:  A list of observation information structures, each describing a single observation
     :param fps: Number of frames per second of playing time in the output video
     :param mps: Number of minutes of actual observing time per second of movie
@@ -923,6 +929,7 @@ def mwa_apng_adaptive(outfile=None,
         oid, vgps, dur_sec = f
         im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
                                       viewgps=vgps,
+                                      cchan=cchan,
                                       gleamsources=gleamsources,
                                       plot_text_template=plot_text_template,
                                       inverse=inverse,
@@ -944,6 +951,7 @@ def mwa_apng_adaptive(outfile=None,
 def mwa_mpeg(outfile=None,
              startgps=None,
              stopgps=None,
+             cchan=None,
              obsinfo_list=None,
              fps=2,   # frames per second
              mps=10,  # Minutes of actual observing time per second of movie (default=10, or 10 minutes per second)
@@ -965,6 +973,7 @@ def mwa_mpeg(outfile=None,
     :param outfile: Output filename, or if not supplied, the image is returned as a byte array
     :param startgps: Start time of the video in GPS seconds (defaults to the start time of the first observation in obsinfo_list)
     :param stopgps: End time of the video in GPS seconds (defaults to the end time of the last observation in obsinfo_list)
+    :param cchan:  The coarse channel number (0-255) to use to generate the primary beam. Defaults to the 13th channel in the observation
     :param obsinfo_list:  A list of observation information structures, each describing a single observation
     :param fps: Number of frames per second of playing time in the output video
     :param mps: Number of minutes of actual observing time per second of movie
@@ -1004,57 +1013,6 @@ def mwa_mpeg(outfile=None,
             oid = 9999999999
         frame_list.append((oid, tgps))
 
-    # got_vaapi = os.path.exists('/dev/dri/renderD128')
-    # buf = None
-    # output = None
-    # if outfile:
-    #     if got_vaapi:
-    #         iio.get_writer(outfile, format='FFMPEG', mode='I', fps=1,
-    #                        codec='h264_vaapi',
-    #                        input_params=[ '-stream_loop', '-1'],
-    #                        output_params=['-vaapi_device',
-    #                                       '/dev/dri/renderD128',
-    #                                       '-vf',
-    #                                       'format=gray|nv12,hwupload'],
-    #                        pixelformat='vaapi_vld')
-    #     else:
-    #         output = iio.get_writer(outfile, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
-    # else:
-    #     buf = io.BytesIO()
-    #     if got_vaapi:
-    #         iio.get_writer(buf, format='FFMPEG', mode='I', fps=1,
-    #                        codec='h264_vaapi',
-    #                        input_params=[ '-stream_loop', '-1'],
-    #                        output_params=['-vaapi_device',
-    #                                       '/dev/dri/renderD128',
-    #                                       '-vf',
-    #                                       'format=gray|nv12,hwupload'],
-    #                        pixelformat='vaapi_vld')
-    #     else:
-    #         output = iio.get_writer(buf, mode='I', input_params=['-stream_loop', '-1'], format='FFMPEG', fps=fps)
-
-    # for f in frame_list:
-    #     oid, vgps = f
-    #     im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
-    #                                   viewgps=vgps,
-    #                                   gleamsources=gleamsources,
-    #                                   plot_text_template=plot_text_template,
-    #                                   inverse=inverse,
-    #                                   background=background,
-    #                                   hidenulls=hidenulls,
-    #                                   beam_type=beam_type,
-    #                                   plotsize=plotsize,
-    #                                   img_format='png',
-    #                                   logger=logger)
-    #     output.append_data(iio.imread(im_frame))
-    #
-    # if outfile:
-    #     output.close()
-    #     return ''
-    # else:
-    #     buf.seek(0)
-    #     return buf.read()
-
     if outfile:
         ofile = outfile
     else:
@@ -1068,6 +1026,7 @@ def mwa_mpeg(outfile=None,
             oid, vgps = f
             im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
                                           viewgps=vgps,
+                                          cchan=cchan,
                                           gleamsources=gleamsources,
                                           plot_text_template=plot_text_template,
                                           inverse=inverse,
