@@ -73,8 +73,9 @@ skymap single --help
 
 ```
 skymap single 1441333936  
-skymap single --inverse 1441333936   # THe same observation as black-on-white
-skymap single --gleamsources --cchan=57 1441333936  # Use channel 57, and show GLEAM sources
+skymap single --inverse 1441333936 --outfile=1441333936-inverse.jpg  # The same observation as black-on-white JPEG
+skymap single --gleamsources --cchan=57 1441333936 --outfile=1441333936-57-gleam.png # Use channel 57, and show GLEAM sources
+skymap single 1377994280  # Showing four subarray primary beams in different colors
 
 # Or an entire 4.4 hour block of EoR observations and calibrators, at 10 frames per second (each
 # showing one minute of actual observing time)
