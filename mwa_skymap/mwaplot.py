@@ -711,22 +711,22 @@ def plot_MWA_skymap(delays=None,
         except:
             pass
 
-    if plot_text:
-        if background.lower() == 'black':
-            fontcolor = 'white'
-        else:
-            fontcolor = 'black'
+    if background.lower() == 'black':
+        fontcolor = 'white'
+    else:
+        fontcolor = 'black'
 
+    if plot_text:
         ax1.text(x=0,
                  y=bmap.ymax - 2e5,
                  s=plot_text,
                  fontsize=10 * plotscale,
                  color=fontcolor)
 
-    ax1.text(x=bmap.xmax, y=Y0, s='W', fontsize=12 * plotscale, horizontalalignment='left', verticalalignment='center')
-    ax1.text(x=bmap.xmin, y=Y0, s='E', fontsize=12 * plotscale, horizontalalignment='right', verticalalignment='center')
-    ax1.text(x=X0, y=bmap.ymax, s='N', fontsize=12 * plotscale, horizontalalignment='center', verticalalignment='bottom')
-    ax1.text(x=X0,y=bmap.ymin, s='S', fontsize=12 * plotscale, horizontalalignment='center', verticalalignment='top')
+    ax1.text(x=bmap.xmax, y=Y0, s='W', fontsize=18 * plotscale, color=fontcolor, horizontalalignment='left', verticalalignment='center')
+    ax1.text(x=bmap.xmin, y=Y0, s='E', fontsize=18 * plotscale, color=fontcolor, horizontalalignment='right', verticalalignment='center')
+    ax1.text(x=X0, y=bmap.ymax, s='N', fontsize=18 * plotscale, color=fontcolor, horizontalalignment='center', verticalalignment='bottom')
+    ax1.text(x=X0,y=bmap.ymin, s='S', fontsize=18 * plotscale, color=fontcolor, horizontalalignment='center', verticalalignment='top')
 
     try:
         buf = io.BytesIO()
