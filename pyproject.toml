@@ -1,7 +1,7 @@
 [project]
 name = "mwa_skymap"
 version = "0.1.1"
-description = "All-sky maps and movies for MWA telescope observations"
+description = "Generates all-sky maps and movies for MWA telescope observations"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 authors = [ { name = "Andrew Williams", email = "Andrew.Williams@curtin.edu.au" } ]

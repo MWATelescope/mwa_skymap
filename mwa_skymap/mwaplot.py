@@ -1,10 +1,13 @@
 #!/usr/bin/python
 
+"""
+Plotting functions - based on the 'plot_MWAconstellations.py' script by David Kaplan in the MWATools repository.
+"""
+
 import io
 import logging
 import math
 import os
-import sys
 import traceback
 import warnings
 

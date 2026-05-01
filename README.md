@@ -1,5 +1,6 @@
 # mwa_skymap
-All-sky maps and movies showing the MWA telescope primary beam
+All-sky maps and movies showing the MWA telescope primary beam, based on the 
+'plot_MWAconstellations.py' script by David Kaplan.
 
 This package uses the  mwa_hyperbeam package (or, optionally, the old mwa_pb
 package) to generate all-sky maps of one or more MWA observations, showing the 
@@ -7,7 +8,8 @@ primary beam on the sky, with the HASLAM radio image as a background.
 
 It consists of a library (mwaplot.py) implementing the core functionality, and a
 command-line tool (skymap, implemented in mwa_skymap.py) to generate all-sky 
-maps and movies.
+maps and movies. You can use the 'mwaplot.py' library from your own code if you want to 
+customise the plots (provide your own source lists, for example).
 
 Features include:
   * Generate still frames showing the primary beam and phase centre at a single instant.
@@ -16,15 +18,15 @@ Features include:
   * Single frame output formats include GIF, JPEG, PNG, etc, and movie formats can be as an
     animated PNG (with variable length frames for more precise repointing times),
     or an MPEG (.mpg) file. Output formats are determined by the file extension.
-  * If an MWA observation includes voltage beams, they will be plotted as well 
-    as the phase centre.
+  * If an MWA observation includes real-time beamformer voltage beams, they will be plotted 
+    as well as the phase centre.
   * If an observation includes primary beam subarrays (multiple sets of tiles, 
-    each with a different pointing centre), they will be plotted as well, with
-    a different contour color for each subarray.
-  * You can optionally add the GLEAM catalog of radio sources to the map.
+    each with a different pointing centre), they will be plotted with
+    a different contour colour for each subarray.
+  * You can optionally add the GLEAM catalogue of radio sources to the map.
   * You can plot the HASLAM background as white-on-black (the default), or 
     in inverse mode, as black-on-white. Source markers and labels are automatically
-    color corrected to stand out in either mode.
+    colour corrected to stand out in either mode.
   * You can specify the primary beam calculation to use - one of 
     'HBA' (mwa_hyperbeam analytic), 'HBFEE' (mwa_hyperbeam FEE - slow without a GPU),
     or 'MWA_PB' (mwa_pb analytic).
@@ -74,12 +76,30 @@ skymap single --help
 
 ```
 skymap single 1441333936  
-skymap single --inverse 1441333936 --outfile=1441333936-inverse.jpg  # The same observation as black-on-white JPEG
-skymap single --gleamsources --cchan=57 1441333936 --outfile=1441333936-57-gleam.png # Use channel 57, and show GLEAM sources
-skymap single 1377994280  # Showing four subarray primary beams in different colors
+```
+<img src="https://ws.mwatelescope.org/plots/1441333936.png" width="512" height="512">
 
-# Or an entire 4.4 hour block of EoR observations and calibrators, at 10 frames per second (each
-# showing one minute of actual observing time)
+The same observation as black-on-white JPEG, using the hyperbeam FEE beam model:
+```
+skymap single --inverse 1441333936 --beam_type=HBFEE --background=white --outfile=1441333936-inverse.jpg
+```
+<img src="https://ws.mwatelescope.org/plots/1441333936-inverse.jpg" width="512" height="512">
 
+Use channel 57, and show GLEAM sources:
+```
+skymap single --gleamsources --cchan=57 1441333936 --outfile=1441333936-57-gleam.png
+```
+<img src="https://ws.mwatelescope.org/plots/1441333936-57-gleam.png" width="512" height="512">
+
+Showing an observation with four subarray primary beams in different colours:
+```
+skymap single 1377994280
+```
+<img src="https://ws.mwatelescope.org/plots/1377994280.png" width="512" height="512">
+
+A 4.4-hour block of EoR observations and calibrators, at 10 frames per second (each
+fram howing one minute of actual observing time):
+```
 skymap movie --outfile=20250908.mpg --startgps=1441386096 --stopgps=1441401784 --inverse
 ```
+[View here](https://ws.mwatelescope.org/plots/20250908.mpg")
