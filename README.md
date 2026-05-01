@@ -33,6 +33,12 @@ Features include:
   * You can specify a specific coarse channel to use for the beam model (defaults to 
     the 13th channel in the observation).
   * Choice of white, black or transparent background.
+  * Customise (or remove) the text shown in the plot by providing a template with 
+    optional fields: '%(obsid)d', '%(viewgps_gps)d', '%(viewgps_utc)s', '%(obsname)s', 
+    '%(freq_mhz)s MHz', and '%(constellation)s'. These fields will be filled in 
+    with the observation ID, GPS time in GPS seconds, GPS time in UTC, observation name, 
+    frequency, and constellation, respectively. When generating movies, the template fields
+    will be filled in for each frame, changing for each new observation displayed.
 
 # Getting started:
 
