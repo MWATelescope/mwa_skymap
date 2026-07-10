@@ -108,4 +108,4 @@ fram howing one minute of actual observing time):
 ```
 skymap movie --outfile=20250908.mpg --startgps=1441386096 --stopgps=1441401784 --inverse
 ```
-[View here](https://ws.mwatelescope.org/plots/20250908.mpg")
+[View here](https://ws.mwatelescope.org/plots/20250908.mpg)
