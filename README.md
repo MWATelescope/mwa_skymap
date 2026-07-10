@@ -7,7 +7,7 @@ package) to generate all-sky maps of one or more MWA observations, showing the
 primary beam on the sky, with the HASLAM radio image as a background.
 
 It consists of a library (mwaplot.py) implementing the core functionality, and a
-command-line tool (skymap, implemented in mwa_skymap.py) to generate all-sky 
+command-line wrapper script (skymap, implemented in skymap.py) to generate all-sky 
 maps and movies. You can use the 'mwaplot.py' library from your own code if you want to 
 customise the plots (provide your own source lists, for example).
 
@@ -17,7 +17,7 @@ Features include:
     repointing as the observations progress between the given start and stop times.
   * Single frame output formats include GIF, JPEG, PNG, etc, and movie formats can be as an
     animated PNG (with variable length frames for more precise repointing times),
-    or an MPEG (.mpg) file. Output formats are determined by the file extension.
+    or an MPEG (.mpg) file in H.264. Output formats are determined by the file extension.
   * If an MWA observation includes real-time beamformer voltage beams, they will be plotted 
     as well as the phase centre.
   * If an observation includes primary beam subarrays (multiple sets of tiles, 
