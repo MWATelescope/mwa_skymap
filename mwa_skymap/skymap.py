@@ -4,6 +4,7 @@
 Plots MWA observations with primary beam contours on a radio-map sky
 """
 
+import glob
 import json
 import os
 
@@ -18,8 +19,27 @@ def cli():
     pass
 
 
-def get_observation(obsid):
-    obs = requests.get('http://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).json()
+def get_observation(obsid, ldir=None):
+    """
+    Returns a dictionary of observation metadata for the given obsid.
+
+    If ldir is provided, look for an <obsid>.json file in the 'ldir' directory, otherwise
+    download the actual MWA observation dictionary from the MWA web service
+    :param obsid: Ten-digit observation ID
+    :param ldir: Local directory name to look in for <obsid>.json
+    :return: An observation dictionary structure
+    """
+    if ldir:
+        obs_file = os.path.join(ldir, '%d.json' % obsid)
+        if os.path.exists(obs_file):
+            with open(obs_file, 'r') as f:
+                obs = json.load(f)
+            return obs
+        else:
+            print('File %s not found' % obs_file)
+            return None
+    else:
+        obs = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).json()
     return obs
 
 
@@ -29,7 +49,7 @@ def getbeamfile():
         print('MWA beam file already exists here: %s' % mwaplot.MWA_BEAM_FILE)
         return
     print('Downloading MWA beam file...')
-    f = requests.get('http://ws.mwatelescope.org/static/mwa_full_embedded_element_pattern.h5')
+    f = requests.get('https://ws.mwatelescope.org/static/mwa_full_embedded_element_pattern.h5')
     with open(mwaplot.MWA_BEAM_FILE, 'wb') as beamf:
         beamf.write(f.content)
     print('Saved MWA beam file to: %s' % mwaplot.MWA_BEAM_FILE)
@@ -49,6 +69,7 @@ def beamtypes():
 
 @cli.command()
 @click.argument('obsid', type=int, default=0)
+@click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--viewgps', type=int, default=None, help='Plot reference time in GPS seconds (defaults to observation midpoint)')
 @click.option('--cchan', type=int, default=None, help='Coarse channel number (defaults to 13th channel in observation)')
 @click.option('--gleamsources', is_flag=True, help='Show GLEAM sources as blue dots')
@@ -59,15 +80,18 @@ def beamtypes():
 @click.option('--beam_type', type=str, default='HBA', help="One of %s" % (', '.join(mwaplot.BEAMS.keys())))
 @click.option('--plotsize', type=int, default=1200, help='Plot width and height in pixels (default 1200)')
 @click.option('--outfile', type=str, default=None, help='Output filename, default is <obsid>.png - extension determines file type')
-def single(obsid, viewgps, cchan, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
+def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
     """
-    Plots a single observation, as a single still frame
+    Plots a single observation, as a single still frame.
+
+    If --ldir is given, this command will try to load <obsid>.json in that directory.
+    Otherwise, the MWA web service is used to download the observation dictionary.
     """
     if not outfile:
         outfile = '%d.png' % obsid
     img_format = outfile.split('.')[-1]
 
-    obs = get_observation(obsid)
+    obs = get_observation(obsid, ldir=ldir)
     if not viewgps:
         viewgps = int((obs['starttime'] + obs['stoptime']) / 2)
 
@@ -89,6 +113,7 @@ def single(obsid, viewgps, cchan, gleamsources, text, inverse, background, hiden
 
 @cli.command()
 @click.argument('obsids', type=int, nargs=-1)
+@click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
 @click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
 @click.option('--cchan', type=int, default=None, help='Coarse channel number (defaults to 13th channel in observation)')
@@ -102,9 +127,14 @@ def single(obsid, viewgps, cchan, gleamsources, text, inverse, background, hiden
 @click.option('--beam_type', type=str, default='HBA', help="One of %s" % (', '.join(mwaplot.BEAMS.keys())))
 @click.option('--plotsize', type=int, default=1200, help='Plot width and height in pixels (default 1200)')
 @click.option('--outfile', type=str, default=None, help='Output filename - extension determines file type')
-def movie(obsids, startgps, stopgps, cchan, fps, mps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
+def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, inverse, background, hidenulls, beam_type, plotsize, outfile):
     """
     Plots a movie, either animated PNG or MPEG
+
+    If --ldir is given, this command will try to load <obsid>.json files in that directory (either from the obsid list,
+    or using startgps and/or stopgps).
+
+    Otherwise, the MWA web service is used to search for and download the observation dictionaries.
     """
     if not outfile:
         outfile = '%d.png' % startgps
@@ -115,16 +145,24 @@ def movie(obsids, startgps, stopgps, cchan, fps, mps, gleamsources, text, invers
         obsids = list(obsids)
         obsids.sort()
         for obsid in obsids:
-            obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).text)
+            obs = get_observation(obsid, ldir=ldir)
             obsinfo_list.append(obs)
     else:
         if not (startgps and stopgps):
             print('Need --startgps and --stopgps or at least one obsid')
             return -1
-        result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
-        for block in result:
-            obs = json.loads(requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % block[0]).text)
-            obsinfo_list.append(obs)
+        if ldir:
+            flist = glob.glob(os.path.join(ldir, '*.json'))
+            for f in flist:
+                foid = os.path.basename(f)[:10]
+                if foid.isdigit() and (startgps <= int(foid) <= stopgps):
+                    obs = get_observation(obsid=int(foid), ldir=ldir)
+                    obsinfo_list.append(obs)
+        else:
+            result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
+            for block in result:
+                obs = get_observation(obsid=block[0])
+                obsinfo_list.append(obs)
 
     if not startgps:
         if obsinfo_list:

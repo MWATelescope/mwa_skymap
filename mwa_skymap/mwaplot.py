@@ -36,6 +36,8 @@ import matplotlib.pyplot as plt
 
 from mpl_toolkits.basemap import Basemap
 
+from mwa_skymap import tile_geometry
+
 # This will work provided you don't install it in some weird way that leaves the
 # files in a zip-file or other compressed format. If you want to do that, you can
 # work out how to do this bit, because I've fought importlib.resources long enough,
@@ -250,126 +252,6 @@ class SkyData(object):
             'PKS2356': Source(name='PKS 2356-61', ra='23:59:04.37', dec='-60:54:59.4'),
             'M1': Source(name='M1/Crab', ra='05:34:31.93830', dec='+22:00:52.1758')
         }
-
-
-def calc_delays(az=0.0, el=0.0):
-    """
-       Function calc_delays - used to calculate the dipole delays
-       for future observations, since they can't be obtained from the
-       observation info record.
-
-       This function takes in an azimuth and zenith angle as
-       inputs and creates and returns a 16-element byte array for
-       delayswitches which have values corresponding to each
-       dipole in the tile having a maximal coherent amplitude in the
-       desired direction.
-
-       This will return null if the inputs are
-       out of physical range (if za is bigger than 90) or
-       if the calculated switches for the dipoles are out
-       of range of the delaylines in the beamformer.
-
-       azimuth of 0 is north and increases clockwise
-       zenith angle is the angle down from zenith
-       These angles should be given in degrees
-
-      Layout of the dipoles on the tile:
-
-                 N
-
-           0   1   2   3
-
-           4   5   6   7
-      W                    E
-           8   9   10  11
-
-           12  13  14  15
-
-                 S
-
-       :param az: Azimuth in degrees
-       :param el: Elevation in degrees
-       :return: 16-element integer array of delays
-    """
-    dip_sep = 1.10  # dipole separations in meters
-    delaystep = 435.0  # Delay line increment in picoseconds
-    maxdelay = 31  # Maximum number of deltastep delays
-    c = 0.000299798  # C in meters/picosecond
-
-    # Convert to radians, and zenith angle instead of elevation angle
-    azr = az * math.pi / 180.0
-    zar = (90 - el) * math.pi / 180.0
-
-    # Define arrays to hold the positional offsets of the dipoles
-
-    # Check input sanity
-    if (abs(zar) > math.pi / 2.0):
-        return None
-
-    # Offsets of the dipoles are calculated relative to the
-    # center of the tile, with positive values being in the north
-    # and east directions
-
-    xoffsets = [-1.5 * dip_sep, -0.5 * dip_sep, 0.5 * dip_sep, 1.5 * dip_sep] * 4
-    yoffsets = [1.5 * dip_sep] * 4 + [0.5 * dip_sep] * 4 + [-0.5 * dip_sep] * 4 + [-1.5 * dip_sep] * 4
-
-    # First, figure out the theoretical delays to the dipoles
-    # relative to the center of the tile
-
-    # calculate exact delays in picoseconds from geometry...
-    delays_picoseconds = [(xoffsets[i] * math.sin(azr) + yoffsets[i] * math.cos(azr)) * math.sin(zar) / c for i in range(16)]
-    mindelay_picoseconds = min(delays_picoseconds)
-    # Subtract minimum delay so that all delays are positive
-    delays_picoseconds = [x - mindelay_picoseconds for x in delays_picoseconds]
-
-    # Now minimize the sum of the deviations^2 from optimal
-    # due to errors introduced when rounding the delays.
-    # This is done by stepping through a series of offsets to
-    # see how the sum of square deviations changes
-    # and then selecting the delays corresponding to the min sq dev.
-
-    # Go through once to get baseline values to compare
-    bestoffset = -0.45 * delaystep
-    minsqdev = 0
-
-    for i in range(16):
-        delay_off = delays_picoseconds[i] + bestoffset
-        intdel = int(round(delay_off / delaystep))
-
-        if (intdel > maxdelay):
-            intdel = maxdelay
-
-        minsqdev += (intdel * delaystep - delay_off) ** 2
-
-    minsqdev = minsqdev / 16
-
-    offset = (-0.45 * delaystep) + (delaystep / 20.0)
-    while offset <= (0.45 * delaystep):
-        sqdev = 0
-        for i in range(16):
-            delay_off = delays_picoseconds[i] + offset
-            intdel = int(round(delay_off / delaystep))
-
-            if (intdel > maxdelay):
-                intdel = maxdelay
-            sqdev = sqdev + ((intdel * delaystep - delay_off) ** 2)
-
-        sqdev = sqdev / 16
-        if (sqdev < minsqdev):
-            minsqdev = sqdev
-            bestoffset = offset
-
-        offset += delaystep / 20.0
-
-    rdelays = [0] * 16  # The rounded delays in units of delaystep
-    for i in range(16):
-        rdelays[i] = int(round((delays_picoseconds[i] + bestoffset) / delaystep))
-        if (rdelays[i] > maxdelay):
-            if (rdelays[i] > maxdelay + 1):
-                return None  # Trying to steer out of range.
-            rdelays[i] = maxdelay
-
-    return [int(rd) for rd in rdelays]
 
 
 def get_beam(Alt, Az, delays, freq_Hz, beam_type=list(BEAMS.keys())[0], logger=DEFAULTLOGGER):
@@ -815,8 +697,8 @@ def plot_MWA_obs_frame(obsinfo=None,
             else:
                 channel = cchan   # Override the coarse channel for this primary beam with the specified channel
             # If the observation is in the future, calculate what delays will be used, instead of using the recorded actual delays
-            if not rfs['xdelays']:
-                delays = calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
+            if 'xdelays' not in rfs or not rfs['xdelays']:
+                delays = tile_geometry.calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
                 logger.debug("Calculated future delays: %s" % delays)
             else:
                 delays = rfs['xdelays']

@@ -25,6 +25,7 @@ Source = "https://github.com/MWATelescope/mwa_skymap"
 
 [project.scripts]
 skymap = "mwa_skymap.skymap:cli"
+local_obs = "mwa_skymap.local_obs:main"
 
 [build-system]
 requires = ["flit_core<4"]

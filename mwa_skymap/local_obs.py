@@ -7,13 +7,16 @@
 """
 
 import optparse
+import os
 import sys
 
 import json
 
 import astropy
 from astropy.time import Time, TimeDelta
-from astropy.coordinates import Angle, EarthLocation
+from astropy.coordinates import Angle, AltAz, EarthLocation, SkyCoord
+
+from mwa_skymap import tile_geometry
 
 usage = """insert usage help here"""
 MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93485", lat="-26:42:11.94986", height=377.827)  # GDA94
@@ -41,7 +44,7 @@ def convert_time(newtime, lasttime):
     timeout = convert_time(newtime, lasttime)
 
     Converts the timestring given in newtime to a time in GPSseconds, return as timeout
-    lasttime is the last time return, used for increments
+    lasttime is the last time returned, used for increments
     formats for newtime:
 
       ++dt                 - increments lasttime by dt seconds
@@ -121,6 +124,19 @@ def parse_coord(value='', is_hours=False):
             raise optparse.OptionValueError("Could not parse %s" % value)
 
     return float(x.deg)
+
+
+def nearest_gridpoint(az, el):
+    """
+    Given an azimuth and elevation, return a tuple of (az, el) for the nearest grid point (the point on
+    the sky where the 16 dipole delay values are all integers).
+
+    :param az: azimuth in degrees
+    :param el: elevation in degrees
+    :return: A tuple of (az, el) in degrees
+    """
+    gripoint_number, azimuth, elevation, distance_in_deg = tile_geometry.find_closest_grid_pointing(az, el)
+    return azimuth, elevation
 
 
 def parse_freqs(input_spec='', numchannels=24, separator=";"):
@@ -256,9 +272,13 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
     return freqs
 
 
-if __name__ == '__main__':
+def main():
     parser = optparse.OptionParser(usage=usage, version="%prog")
 
+    parser.add_option("--ldir",
+                      dest="dir",
+                      default='.',
+                      help="Local directory to write <obsid>.json dummy observation files.")
     parser.add_option("--obsname", "--name",
                       dest="obsname",
                       default='',
@@ -279,6 +299,10 @@ if __name__ == '__main__':
                       dest="lst",
                       type='string',
                       help="LST in hours to schedule observation - must be used with the --date parameter, and WITHOUT specifying --starttime")
+    parser.add_option("--source",
+                      dest="source",
+                      default=None,
+                      help="Name of the source to track. It will be looked up online using the CDS name resolver.")
     parser.add_option("--ra",
                       dest='ra',
                       type='string',
@@ -287,6 +311,16 @@ if __name__ == '__main__':
                       dest='dec',
                       type='string',
                       help="Source to track by RA,Dec (dd:mm:ss or decimal degrees) in ICRS reference frame.")
+    parser.add_option("--azimuth", "--az",
+                      dest='az',
+                      default=None,
+                      type='string',
+                      help="Pointing direction in Az,El (dd:mm:ss or decimal degrees).")
+    parser.add_option("--elevation", "--altitude", "--el", "--alt",
+                      dest='alt',
+                      default=None,
+                      type='string',
+                      help="Pointing direction in Az,El (dd:mm:ss or decimal degrees).")
     parser.add_option("--rfstream",
                       dest='rfstream_number',
                       default=0,
@@ -304,7 +338,6 @@ if __name__ == '__main__':
                            "<centerchannel>,<channelwidth>,[<increment>], separated by ; " +
                            "(channels are 1.28 MHz coarse channel numbers).  [default=121,24]")
 
-    now = Time.now().gps
     starttimelast = int(Time.now().gps / 8.0) * 8 + 8
 
     (options, args) = parser.parse_args()
@@ -344,37 +377,87 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     stoptime = convert_time(options.stoptime, starttime)
-    ra = parse_coord(value=options.ra, is_hours=True)
-    dec = parse_coord(value=options.dec, is_hours=False)
+    obs_midpoint = Time((starttime + stoptime) / 2.0, format='gps', scale='utc')
+    altaz_frame = AltAz(obstime=obs_midpoint, location=MWAPOS)
 
-    # TODO - calculate az/el for the given RA/Dec, to put in rfstream
+    if options.source is not None:
+        source = SkyCoord.from_name(options.source)
+        ra, dec = float(source.ra.value), float(source.dec.value)
+        app_pos = source.transform_to(altaz_frame)
+        exact_alt, exact_az = float(app_pos.alt.value), float(app_pos.az.value)
+        az, alt = nearest_gridpoint(az=exact_az, el=exact_alt)
+    elif options.ra is not None and options.dec is not None:
+        ra = parse_coord(value=options.ra, is_hours=True)
+        dec = parse_coord(value=options.dec, is_hours=False)
+        body = SkyCoord(ra=ra / 15.0 * astropy.units.hour, dec=dec * astropy.units.degree)
+        app_pos = body.transform_to(altaz_frame)
+        exact_alt, exact_az = float(app_pos.alt.value), float(app_pos.az.value)
+        az, alt = nearest_gridpoint(az=exact_az, el=exact_alt)
+    elif options.alt is not None and options.az is not None:
+        exact_alt = parse_coord(value=options.alt, is_hours=False)
+        exact_az = parse_coord(value=options.az, is_hours=False)
+        aacoord = SkyCoord(alt=exact_alt * astropy.units.degree,
+                           az=exact_az * astropy.units.degree,
+                           frame='altaz',
+                           obstime=obs_midpoint,
+                           location=MWAPOS,
+                           unit=astropy.units.degree)
+        coord = aacoord.transform_to('icrs')
+        coord.obstime = obs_midpoint
+        ra, dec = float(coord.ra.to(astropy.units.degree).value), float(coord.dec.to(astropy.units.degree).value)
+        az, alt = nearest_gridpoint(az=exact_az, el=exact_alt)
+    else:
+        print("Must specify either source, ra/dec or alt/az")
+        sys.exit(-1)
+
+    if alt < 15:
+        print("Altitude must be above 15 degrees")
+        sys.exit(-1)
 
     freq_list = parse_freqs(input_spec=options.freq)
 
+    filename = '%s/%d.json' % (options.dir, starttime)
+
     if options.rfstream_number > 0 and options.voltbeam_number == 0:
-        f = open('%d.json' % options.starttime, 'w')
+        if not os.path.exists(filename):
+            print('Create obsid=%d first, then add subarray using --rfstream=%d' % (starttime, options.rfstream_number))
+            sys.exit(-1)
+        print('Adding subarray rfstream %d to existing obsid=%d' % (options.rfstream_number, starttime))
+        f = open(filename, 'r')
         obsinfo = json.load(f)
         f.close()
         print('Adding new subarray number %d')
-        obsinfo['rfstreams'][str(options.rfstream_number)] = {'az':NNN, 'el':NNN, 'frequencies': freq_list}
+        obsinfo['rfstreams'][str(options.rfstream_number)] = {'az':az, 'el':alt, 'frequencies': freq_list}
     elif options.rfstream_number == 0 and options.voltbeam_number > 0:
-        f = open('%d.json' % options.starttime, 'w')
+        if not os.path.exists(filename):
+            print('Create obsid=%d first, then add voltage beam using --voltbeam=%d' % (starttime, options.voltbeam_number))
+            sys.exit(-1)
+        print('Adding voltage beam %d to existing obsid=%d' % (options.voltbeam_number, starttime))
+        f = open(filename, 'r')
         obsinfo = json.load(f)
         f.close()
-        obsinfo['voltage_beams'][str(options.voltbeam_number)] = {'ra': ra, 'dec': ra, 'target_name': options.obsname}
+        obsinfo['voltage_beams'][str(options.voltbeam_number)] = {'ra': ra, 'dec': dec, 'target_name': options.obsname}
     elif options.rfstream_number > 0 and options.voltbeam_number > 0:
-        print('Can only specity one of rfstream or voltbeam')
+        print('Can only specify one of rfstream or voltbeam')
         sys.exit(-1)
     else:
+        if os.path.exists(filename):
+            print('Overwriting obsid=%d' % starttime)
         obsinfo = {'starttime': starttime,
                    'stoptime': stoptime,
                    'obsname': options.obsname,
-                   'rfstreams': {'0': {'frequencies': freq_list}},
+                   'rfstreams': {'0': {'az':az, 'el':alt, 'frequencies': freq_list}},
                    'ra_phase_center': ra,
                    'dec_phase_center': dec,
                    'voltage_beams': {}}
 
-    # f = open('%d.json' % options.starttime, 'w')
-    # json.dump(obsinfo, f)
-    # f.close()
-    print(obsinfo)
+    obs_json = json.dumps(obsinfo, indent=4)
+
+    f = open(filename, 'w')
+    f.write(obs_json)
+    f.close()
+    print(obs_json)
+
+
+if __name__ == '__main__':
+    main()
