@@ -325,12 +325,12 @@ def main():
                       dest='rfstream_number',
                       default=0,
                       type="int",
-                      help="RF stream number [default=%default], pass previously saved obsid value > 0 to add a subarray to an observation.")
+                      help="RF stream number [default=%default], pass value > 0 to add a subarray to a previously saved observation.")
     parser.add_option("--voltbeam",
                       dest='voltbeam_number',
                       default=0,
                       type="int",
-                      help="Voltage number [default=%default], pass previously saved obsid value > 0 to add a voltage beam to an observation.")
+                      help="Voltage number [default=%default], pass value > 0 to add a voltage beam to a previously saved observation.")
     parser.add_option("--freq", "--frequencies", "--frequency",
                       dest="freq",
                       default="121,24",
