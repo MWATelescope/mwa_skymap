@@ -30,7 +30,7 @@ def get_observation(obsid, ldir=None):
     :param ldir: Local directory name to look in for <obsid>.json
     :return: An observation dictionary structure
     """
-    if ldir:
+    if ldir or obsid.endswith('.json'):
         if obsid.endswith('.json'):
             obs_file = obsid
         elif obsid.isdigit():
