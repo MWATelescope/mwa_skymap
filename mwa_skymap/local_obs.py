@@ -20,7 +20,7 @@ from astropy.coordinates import Angle, AltAz, EarthLocation, SkyCoord
 
 from mwa_skymap import tile_geometry
 
-usage = """usage: %prog [options]
+USAGE = """usage: %prog [options]
     
 Generates JSON files with simulated MWA telescope observations. Parameters include:
 
@@ -324,7 +324,7 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
 
 
 def main():
-    parser = optparse.OptionParser(usage=usage, version="%prog")
+    parser = optparse.OptionParser(usage=USAGE, version="%prog")
 
     parser.add_option("--ldir",
                       dest="dir",
