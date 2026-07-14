@@ -478,7 +478,7 @@ def main():
         obsinfo = json.load(f)
         f.close()
         print('Adding new subarray number %d')
-        obsinfo['rfstreams'][str(options.rfstream_number)] = {'az':az, 'el':alt, 'frequencies': freq_list}
+        obsinfo['rfstreams'][str(options.rfstream_number)] = {'azimuth':az, 'elevation':alt, 'frequencies': freq_list}
     elif options.rfstream_number == 0 and options.voltbeam_number > 0:
         if not os.path.exists(filename):
             print('Create obsid=%d first, then add voltage beam using --voltbeam=%d' % (starttime, options.voltbeam_number))
@@ -497,7 +497,7 @@ def main():
         obsinfo = {'starttime': starttime,
                    'stoptime': stoptime,
                    'obsname': options.obsname,
-                   'rfstreams': {'0': {'az':az, 'el':alt, 'frequencies': freq_list}},
+                   'rfstreams': {'0': {'azimuth':az, 'elevation':alt, 'frequencies': freq_list}},
                    'ra_phase_center': ra,
                    'dec_phase_center': dec,
                    'voltage_beams': {}}
