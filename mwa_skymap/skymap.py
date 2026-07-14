@@ -171,7 +171,7 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
             for f in flist:
                 foid = os.path.basename(f)[:10]
                 if foid.isdigit() and (startgps <= int(foid) <= stopgps):
-                    obs = get_observation(obsid=int(foid), ldir=ldir)
+                    obs = get_observation(obsid=foid, ldir=ldir)
                     obsinfo_list.append(obs)
         else:
             result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
