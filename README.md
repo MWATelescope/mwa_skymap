@@ -170,3 +170,15 @@ add voltage beam with the new pointing. You can repeat with --voltbeam=2, etc.
 Example: Schedule a 32-second observation of HerA starting in 8 seconds time:
 
 `local_obs` --starttime=++8 --stoptime=++32 --source=HerA --freq=121,24
+
+A 296s observation of CenA at a specific time, written to `dummy` directory:
+
+`local_obs` --ldir=dummy --source=CenA --stoptime=++296 --starttime="2026-07-14,10:00:00 --obsname=cenatest --freq=145,24
+
+A 120s observation of PicA on August 18th 2026, at an LST of 5.5 hours:
+
+`local_obs` --ldir=dummy --source=PicA --stoptime=++120 --utdate=2026-08-18 --lst=5.5 --obsname=picatest --freq=145,24
+
+A 296s observation of HydA starting 32 seconds from now:
+
+`local_obs` --ra='09:18:06' --dec='-12:05:44' --stoptime=++296 --starttime=++32 --obsname=radectest --freq=145,24
