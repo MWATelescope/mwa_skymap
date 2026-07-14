@@ -186,3 +186,12 @@ A 120s observation of PicA on August 18th 2026, at an LST of 5.5 hours:
 A 296s observation of HydA starting 32 seconds from now:
 
 `local_obs` --ra='09:18:06' --dec='-12:05:44' --stoptime=++296 --starttime=++32 --obsname=radectest --freq=145,24
+
+Once you've generated local JSON files, you can use them with skymap:
+
+Example: generate a skymap for the observation defined in dummy/1441333936.json
+
+`skymap single --ldir=dummy 1441333936`
+
+If the directory specified by --ldir contains more than one observation, you can pass a list of obsids or use
+--startgps and --stopgps to define the observation time range for a 'skymap movie ...' command.
