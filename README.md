@@ -120,6 +120,10 @@ These files have the form `<obsid>.json` and are created by calling the `local_o
 command, a (very simplified) version of the same command used to add real
 MWA observations to the schedule database. 
 
+Note that like real MWA observations, the phase centre will be the actual RA/Dec provided,
+but the primary beam will be centered on the nearest sweet-spot grid position, and dipole
+delays calcualted accordingly.
+
 ## usage
 
 `local_obs` generates JSON files with simulated MWA telescope observations. Parameters include:
