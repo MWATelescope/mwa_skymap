@@ -7,6 +7,7 @@ Plots MWA observations with primary beam contours on a radio-map sky
 import glob
 import json
 import os
+import sys
 
 import click
 import requests
@@ -30,7 +31,14 @@ def get_observation(obsid, ldir=None):
     :return: An observation dictionary structure
     """
     if ldir:
-        obs_file = os.path.join(ldir, '%d.json' % obsid)
+        if obsid.endswith('.json'):
+            obs_file = obsid
+        elif obsid.isdigit():
+            obs_file = os.path.join(ldir, '%s.json' % obsid)
+        else:
+            print('Invalid obsid: %s' % obsid)
+            return None
+
         if os.path.exists(obs_file):
             with open(obs_file, 'r') as f:
                 obs = json.load(f)
@@ -68,7 +76,7 @@ def beamtypes():
 
 
 @cli.command()
-@click.argument('obsid', type=int, default=0)
+@click.argument('obsid', type=str, default=0)
 @click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--viewgps', type=int, default=None, help='Plot reference time in GPS seconds (defaults to observation midpoint)')
 @click.option('--cchan', type=int, default=None, help='Coarse channel number (defaults to 13th channel in observation)')
@@ -88,7 +96,14 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
     Otherwise, the MWA web service is used to download the observation dictionary.
     """
     if not outfile:
-        outfile = '%d.png' % obsid
+        if obsid.endswith('.json'):
+            outfile = '%s.png' % os.path.splitext(os.path.basename(obsid))[0]
+        elif obsid.isdigit():
+            outfile = '%d.png' % obsid
+        else:
+            print('Invalid obsid: %s' % obsid)
+            sys.exit(-1)
+
     img_format = outfile.split('.')[-1]
 
     obs = get_observation(obsid, ldir=ldir)
@@ -112,7 +127,7 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
 
 
 @cli.command()
-@click.argument('obsids', type=int, nargs=-1)
+@click.argument('obsids', type=str, nargs=-1)
 @click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
 @click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
