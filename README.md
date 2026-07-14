@@ -109,3 +109,64 @@ fram howing one minute of actual observing time):
 skymap movie --outfile=20250908.mpg --startgps=1441386096 --stopgps=1441401784 --inverse
 ```
 [View here](https://ws.mwatelescope.org/plots/20250908.mpg)
+
+# Local observation files
+
+By default, skymap will use the MWA web services to look for observations in the 
+MWA observation database. You can also use local observation files by setting the 
+`--ldir` option to a directory containing dummy observation files in JSON format.
+
+These files have the form `<obsid>.json` and are created by calling the `local_obs` 
+command, a (very simplified) version of the same command used to add real
+MWA observations to the schedule database. 
+
+## usage
+
+`local_obs` generates JSON files with simulated MWA telescope observations. Parameters include:
+
+  * --ldir: Directory to write the JSON file describing the observation.
+  * Either --starttime= or both --utdate= and --lst= to sepcify the observation start
+  * --stoptime= to specify the observation end
+  * One of --source=, or --ra= and --dec=, or --alt= and --az=
+  * --freq= with a channel specifier (defaults to 121,24)
+  * --obsname: Observation name.
+
+To define the start of the observation, you can use --startime= with an argument
+that's one of:
+  * An integer in GPS seconds
+  * A date/time in the form 'yyyy-mm-dd,hh:mm:ss'
+  * A modifier, e.g. ++10s, ++1m, ++1h, relative to the current time.
+
+Or, you can use --utdate=yyyy-mm-dd to specify the UTC date, and --lst= to specify
+the Local Sidereal Time, in hours, on that date.
+
+To define the end of an observation, you use --stoptime= with an argument that's
+one of:
+  * An integer in GPS seconds
+  * A date/time in the form 'yyyy-mm-dd,hh:mm:ss'
+  * A modifier, e.g. ++10s, ++1m, ++1h, relative to the observation start time.
+    
+To define the pointing, you can:
+  * Specify a source name with --source= to be resolved using 
+      astropy.coordinates.SkyCoord.from_name
+  * Specify --ra= and --dec= using either floats (in degrees), or sexagesimal values 
+    (DD:MM:SS). Sexagesimal values for RA will be interpreted as hours, not degrees.
+  * Specify --alt= and --az= using floats (in degrees), or sexagesimal values (DD:MM:SS) 
+    in degrees.
+        
+The output will be a JSON file of the form <obsid>.json in the current directory, 
+or in the directory specified by the --ldir= option.
+
+To add a (simulated) subarray pointing, call %prog once with the arguments
+for the observation, then call it again with exactly the same arguments
+except for a new pointing (ra/dec, alt/az or sourcename), and --rfstream=1 to
+add a subarray with the new pointing. You can repeat with --rfstream=2, etc.
+
+To add a (simulated) real-time voltage beam, call %prog once with the arguments
+for the observation, then call it again with exactly the same arguments
+except for a new pointing (ra/dec, alt/az or sourcename), and --voltbeam=1 to
+add voltage beam with the new pointing. You can repeat with --voltbeam=2, etc.
+
+Example: Schedule a 32-second observation of HerA starting in 8 seconds time:
+
+`local_obs` --starttime=++8 --stoptime=++32 --source=HerA --freq=121,24

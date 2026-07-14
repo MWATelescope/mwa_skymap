@@ -3,7 +3,9 @@
 """Script to generate fake MWA observations in JSON files, so that they can be
    plotted with skymap without actually being in the schedule database.
 
-   New, untested, not working yet.
+   Hacked together from current and obsolete code in mwa-MandC-Core to replicate a
+   very basic version of the MWA scheduling code, just enough for the skymap code
+   to use to generate plots.
 """
 
 import optparse
@@ -18,7 +20,56 @@ from astropy.coordinates import Angle, AltAz, EarthLocation, SkyCoord
 
 from mwa_skymap import tile_geometry
 
-usage = """insert usage help here"""
+usage = """usage: %prog [options]
+    
+Generates JSON files with simulated MWA telescope observations. Parameters include:
+
+--ldir: Directory to write the JSON file describing the observation.
+Either --starttime= or both --utdate= and --lst= to sepcify the observation start
+--stoptime= to specify the observation end
+One of --source=, or --ra= and --dec=, or --alt= and --az=
+--freq= with a channel specifier (defaults to 121,24)
+--obsname: Observation name.
+
+To define the start of the observation, you can use --startime= with an argument
+that's one of:
+    -An integer in GPS seconds
+    -A date/time in the form 'yyyy-mm-dd,hh:mm:ss'
+    -A modifier, e.g. ++10s, ++1m, ++1h, relative to the current time.
+Or, you can use --utdate=yyyy-mm-dd to specify the UTC date, and --lst= to specify
+the Local Sidereal Time, in hours, on that date.
+
+To define the end of an observation, you use --stoptime= with an argument that's
+one of:
+    -An integer in GPS seconds
+    -A date/time in the form 'yyyy-mm-dd,hh:mm:ss'
+    -A modifier, e.g. ++10s, ++1m, ++1h, relative to the observation start time.
+    
+To define the pointing, you can:
+    -Specify a source name with --source= to be resolved using 
+      astropy.coordinates.SkyCoord.from_name
+    -Specify --ra= and --dec= using either floats (in degrees), or sexagesimal 
+      values (DD:MM:SS). Sexagesimal values for RA will be interpreted as hours,
+      not degrees.
+    -Specify --alt= and --az= using floats (in degrees), or sexagesimal values
+      (DD:MM:SS) in degrees.
+        
+The output will be a JSON file of the form <obsid>.json in the current directory, 
+or in the directory specified by the --ldir= option.
+
+To add a (simulated) subarray pointing, call %prog once with the arguments
+for the observation, then call it again with exactly the same arguments
+except for a new pointing (ra/dec, alt/az or sourcename), and --rfstream=1 to
+add a subarray with the new pointing. You can repeat with --rfstream=2, etc.
+
+To add a (simulated) real-time voltage beam, call %prog once with the arguments
+for the observation, then call it again with exactly the same arguments
+except for a new pointing (ra/dec, alt/az or sourcename), and --voltbeam=1 to
+add voltage beam with the new pointing. You can repeat with --voltbeam=2, etc.
+
+Example: %prog --starttime=++0 --stoptime=++32 --source=HerA --freq=121,24"
+    """
+
 MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93485", lat="-26:42:11.94986", height=377.827)  # GDA94
 
 
@@ -279,7 +330,7 @@ def main():
                       dest="dir",
                       default='.',
                       help="Local directory to write <obsid>.json dummy observation files.")
-    parser.add_option("--obsname", "--name",
+    parser.add_option("--obsname",
                       dest="obsname",
                       default='',
                       help="Base name of observation. Will have source name and centre frequency channel appended.")
@@ -291,11 +342,11 @@ def main():
                       dest="stoptime",
                       default=None,
                       help="Observation stop time as above, or ++DT[s/m/h] from starttime. If omitted, use starttime + (nsources*nfreqs*exptime)")
-    parser.add_option("--utdate", "--date",
+    parser.add_option("--utdate",
                       dest="utdate",
                       default=None,
                       help="UT Date (YYYY-MM-DD) to schedule observation - must be used with the --lst parameter, and WITHOUT specifying --starttime")
-    parser.add_option("--lst", "--lsthour",
+    parser.add_option("--lst",
                       dest="lst",
                       type='string',
                       help="LST in hours to schedule observation - must be used with the --date parameter, and WITHOUT specifying --starttime")
@@ -374,6 +425,7 @@ def main():
 
     if (not starttime):
         print("Can't determine start time in GPS seconds")
+        parser.print_help()
         sys.exit(-1)
 
     stoptime = convert_time(options.stoptime, starttime)
