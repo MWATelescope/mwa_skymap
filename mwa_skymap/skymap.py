@@ -47,7 +47,7 @@ def get_observation(obsid, ldir=None):
             print('File %s not found' % obs_file)
             return None
     else:
-        obs = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%d' % obsid).json()
+        obs = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%s' % obsid).json()
     return obs
 
 
