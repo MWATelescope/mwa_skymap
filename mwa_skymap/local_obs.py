@@ -425,7 +425,6 @@ def main():
 
     if (not starttime):
         print("Can't determine start time in GPS seconds")
-        parser.print_help()
         sys.exit(-1)
 
     stoptime = convert_time(options.stoptime, starttime)

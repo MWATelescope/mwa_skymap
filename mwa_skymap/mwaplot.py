@@ -842,7 +842,8 @@ def mwa_apng_adaptive(outfile=None,
             exptime = observations[obsid_list[i + 1]]['starttime'] - obs['starttime']
 
         if exptime < sec_per_frame:   # Add a single frame for this observation, with the appropriate duration
-            frame_list.append((obsid, obs['viewgps'], exptime))
+            viewgps = (obs['starttime'] + obs['stoptime']) / 2
+            frame_list.append((obsid, viewgps, exptime))
         else:   # Add multiple frames for this observation, with the appropriate duration
             t = obsid
             while t < obs['starttime'] + exptime - sec_per_frame:
