@@ -67,7 +67,12 @@ for the observation, then call it again with exactly the same arguments
 except for a new pointing (ra/dec, alt/az or sourcename), and --voltbeam=1 to
 add voltage beam with the new pointing. You can repeat with --voltbeam=2, etc.
 
-Example: %prog --starttime=++0 --stoptime=++32 --source=HerA --freq=121,24"
+To schedule observations in a script, use the --quiet option and all non-error
+output will be suppressed except for the stoptime of the observation added. The
+caller can capture this stoptime, and use it as the --starttime for the next
+observation.
+
+Example: %prog --starttime=++8 --stoptime=++32 --source=HerA --freq=121,24"
     """
 
 MWAPOS = EarthLocation.from_geodetic(lon="116:40:14.93485", lat="-26:42:11.94986", height=377.827)  # GDA94
@@ -330,6 +335,11 @@ def main():
                       dest="dir",
                       default='.',
                       help="Local directory to write <obsid>.json dummy observation files.")
+    parser.add_option("--quiet", "-q",
+                      action="store_true",
+                      dest="quiet",
+                      default=False,
+                      help="Only print the stoptime in GPS seconds, to capture and use as the start time for the next observation")
     parser.add_option("--obsname",
                       dest="obsname",
                       default='',
@@ -473,17 +483,18 @@ def main():
         if not os.path.exists(filename):
             print('Create obsid=%d first, then add subarray using --rfstream=%d' % (starttime, options.rfstream_number))
             sys.exit(-1)
-        print('Adding subarray rfstream %d to existing obsid=%d' % (options.rfstream_number, starttime))
+        if not options.quiet:
+            print('Adding subarray rfstream %d to existing obsid=%d' % (options.rfstream_number, starttime))
         f = open(filename, 'r')
         obsinfo = json.load(f)
         f.close()
-        print('Adding new subarray number %d')
         obsinfo['rfstreams'][str(options.rfstream_number)] = {'azimuth':az, 'elevation':alt, 'frequencies': freq_list}
     elif options.rfstream_number == 0 and options.voltbeam_number > 0:
         if not os.path.exists(filename):
             print('Create obsid=%d first, then add voltage beam using --voltbeam=%d' % (starttime, options.voltbeam_number))
             sys.exit(-1)
-        print('Adding voltage beam %d to existing obsid=%d' % (options.voltbeam_number, starttime))
+        if not options.quiet:
+            print('Adding voltage beam %d to existing obsid=%d' % (options.voltbeam_number, starttime))
         f = open(filename, 'r')
         obsinfo = json.load(f)
         f.close()
@@ -492,7 +503,7 @@ def main():
         print('Can only specify one of rfstream or voltbeam')
         sys.exit(-1)
     else:
-        if os.path.exists(filename):
+        if os.path.exists(filename) and not options.quiet:
             print('Overwriting obsid=%d' % starttime)
         obsinfo = {'starttime': starttime,
                    'stoptime': stoptime,
@@ -504,10 +515,25 @@ def main():
 
     obs_json = json.dumps(obsinfo, indent=4)
 
+    if not options.quiet:
+        if options.rfstream_number > 0:
+            print('Updating existing %s with starttime=%d, stoptime=%s, rfstream=%d' % (filename,
+                                                                                        starttime,
+                                                                                        stoptime,
+                                                                                        options.rfstream_number))
+        elif options.voltbeam_number > 0:
+            print('Updating existing %s with starttime=%d, stoptime=%s, voltbeam=%d' % (filename,
+                                                                                        starttime,
+                                                                                        stoptime,
+                                                                                        options.voltbeam_number))
+        else:
+            print('Writing %s with starttime=%d, stoptime=%s' % (filename, starttime, stoptime))
+    else:
+        print('%s' % stoptime)   # Capture stdout in a script to use this stoptime as the start time for the next obs
+
     f = open(filename, 'w')
     f.write(obs_json)
     f.close()
-    print(obs_json)
 
 
 if __name__ == '__main__':

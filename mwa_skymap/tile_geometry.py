@@ -38,7 +38,7 @@ def calc_delays(az=0.0, el=0.0):
     """
     dip_sep = 1.10  # dipole separations in meters
     delaystep = 435.0  # Delay line increment in picoseconds
-    maxdelay = 31  # Maximum number of deltastep delays
+    maxdelay = 31  # Maximum number of delaystep delays
     c = 0.000299798  # C in meters/picosecond
     dtor = math.pi / 180.0  # convert degrees to radians
     # define zenith angle
@@ -175,7 +175,7 @@ def find_closest_grid_pointing(az=0, el=0):
     :return: a tuple of (gripoint_number, azimuth, elevation, distance_in_deg)
     """
     closest = None
-    closest_distance=180  # in degrees
+    closest_distance = 180  # in degrees
     for g in GRID:
         g_number, g_azimuth, g_elevation, g_sigma, g_delays = g
         x1 = math.cos(az / DEG_IN_RADIAN) * math.cos(el / DEG_IN_RADIAN)

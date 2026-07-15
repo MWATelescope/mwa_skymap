@@ -11,6 +11,9 @@ command-line wrapper script (skymap, implemented in skymap.py) to generate all-s
 maps and movies. You can use the 'mwaplot.py' library from your own code if you want to 
 customise the plots (provide your own source lists, for example).
 
+It also includes a script (local_obs.py) to generate JSON files describing dummy
+observations, which can be used to generate skymaps to plan future observations.
+
 Features include:
   * Generate still frames showing the primary beam and phase centre at a single instant.
   * Generate movies showing the primary beam and phase centre moving across the sky,

@@ -975,4 +975,3 @@ def mwa_mpeg(outfile=None,
     else:
         ofile.seek(0)
         return ofile.read()
-

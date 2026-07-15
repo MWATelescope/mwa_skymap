@@ -194,7 +194,7 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
             return -1
 
     if img_format == 'PNG':
-        im = mwaplot.mwa_apng_adaptive(outfile=outfile,
+        _m = mwaplot.mwa_apng_adaptive(outfile=outfile,
                                        obsinfo_list=obsinfo_list,
                                        startgps=startgps,
                                        stopgps=stopgps,
@@ -209,7 +209,7 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
                                        beam_type=beam_type,
                                        plotsize=plotsize)
     elif img_format == 'MPG':
-        im = mwaplot.mwa_mpeg(outfile=outfile,
+        _m = mwaplot.mwa_mpeg(outfile=outfile,
                               obsinfo_list=obsinfo_list,
                               startgps=startgps,
                               stopgps=stopgps,
