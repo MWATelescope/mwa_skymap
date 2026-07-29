@@ -49,7 +49,7 @@ def get_observation(obsid, ldir=None):
     else:
         result = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%s' % obsid)
         if result.status_code != 200:
-            print('Failed to fine observation %s in the MWA schedule' % obsid)
+            print('Failed to find observation %s in the MWA schedule' % obsid)
             return None
         obs = result.json()
     return obs
