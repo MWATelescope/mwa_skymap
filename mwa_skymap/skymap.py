@@ -99,7 +99,7 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
         if obsid.endswith('.json'):
             outfile = '%s.png' % os.path.splitext(os.path.basename(obsid))[0]
         elif obsid.isdigit():
-            outfile = '%d.png' % obsid
+            outfile = '%s.png' % obsid
         else:
             print('Invalid obsid: %s' % obsid)
             sys.exit(-1)
@@ -151,10 +151,6 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
 
     Otherwise, the MWA web service is used to search for and download the observation dictionaries.
     """
-    if not outfile:
-        outfile = '%d.png' % startgps
-    img_format = outfile.split('.')[-1].upper()
-
     obsinfo_list = []
     if obsids:
         obsids = list(obsids)
@@ -192,6 +188,10 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
         else:
             print('Need --stopgps or at least one obsid')
             return -1
+
+    if not outfile:
+        outfile = '%d.png' % startgps
+    img_format = outfile.split('.')[-1].upper()
 
     if img_format == 'PNG':
         _m = mwaplot.mwa_apng_adaptive(outfile=outfile,
