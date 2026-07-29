@@ -687,7 +687,7 @@ def plot_MWA_obs_frame(obsinfo=None,
     if obsinfo:
         print('rendering obsid: %s at %s' % (obsinfo['starttime'], viewgps))
         all_delays = []
-        all_channels = []
+        all_centre_channels = []
         r_list = list(obsinfo['rfstreams'].keys())
         r_list.sort()
         for rfs_id in r_list:
@@ -705,7 +705,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                 logger.debug("Used actual delays: %s" % delays)
 
             all_delays.append(delays)
-            all_channels.append(channel)
+            all_centre_channels.append(channel)
 
         voltage_beams = obsinfo['voltage_beams']
 
@@ -728,7 +728,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                                           'viewgps_gps':viewgps,
                                           'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
                                           'obsname':obsinfo['obsname'],
-                                          'freq_mhz':obsinfo['rfstreams'][r_list[0]]['frequencies'][12] * 1.28,
+                                          'freq_mhz':all_centre_channels[0] * 1.28,
                                           'constellation':constellation[1]}
     else:
         plot_text = plot_text_template % {'obsid':'N/A',
@@ -740,13 +740,13 @@ def plot_MWA_obs_frame(obsinfo=None,
 
         print('No observation info provided, renering at time %s' % viewgps)
         all_delays = None
-        all_channels = None
+        all_centre_channels = None
         voltage_beams = None
         ra_pc = None
         dec_pc = None
 
     return plot_MWA_skymap(delays=all_delays,
-                           channels=all_channels,
+                           channels=all_centre_channels,
                            viewgps=viewgps,
                            gleamsources=gleamsources,
                            plot_text=plot_text,
