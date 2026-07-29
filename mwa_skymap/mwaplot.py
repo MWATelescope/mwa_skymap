@@ -67,7 +67,7 @@ DPI = 150
 SKYDATA = None   # Will be an instance of SkyData() after the first use
 
 DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)d at %(viewgps_utc)s:\n" +
-                     "%(obsname)s at %(freq_mhz)s MHz\n" +
+                     "%(obsname)s at %(freq_mhz)4.1f MHz\n" +
                      "in the constellation %(constellation)s")
 
 # Used for multiple primary beams - the first beam is green contours, the second is cyan, etc
