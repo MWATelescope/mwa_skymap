@@ -111,6 +111,10 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
     img_format = outfile.split('.')[-1]
 
     obs = get_observation(obsid, ldir=ldir)
+    if obs is None:
+        print('Failed to get observation %s' % obsid)
+        sys.exit(-1)
+
     if not viewgps:
         viewgps = int((obs['starttime'] + obs['stoptime']) / 2)
 
@@ -161,6 +165,9 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
         obsids.sort()
         for obsid in obsids:
             obs = get_observation(obsid, ldir=ldir)
+            if obs is None:
+                print('Failed to get observation %s' % obsid)
+                sys.exit(-1)
             obsinfo_list.append(obs)
     else:
         if not (startgps and stopgps):
@@ -172,11 +179,17 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
                 foid = os.path.basename(f)[:10]
                 if foid.isdigit() and (startgps <= int(foid) <= stopgps):
                     obs = get_observation(obsid=foid, ldir=ldir)
+                    if obs is None:
+                        print('Failed to get observation %s' % foid)
+                        sys.exit(-1)
                     obsinfo_list.append(obs)
         else:
             result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
             for block in result:
                 obs = get_observation(obsid=block[0])
+                if obs is None:
+                    print('Failed to get observation %s' % block[0])
+                    sys.exit(-1)
                 obsinfo_list.append(obs)
 
     if not startgps:
