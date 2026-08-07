@@ -696,13 +696,13 @@ def plot_MWA_obs_frame(obsinfo=None,
                 channel = rfs['frequencies'][12]
             else:
                 channel = cchan   # Override the coarse channel for this primary beam with the specified channel
-            # If the observation is in the future, calculate what delays will be used, instead of using the recorded actual delays
-            if 'xdelays' not in rfs or not rfs['xdelays']:
+            # If the observation is in the future (delays are all 32), calculate what delays will be used, instead of using the recorded actual delays
+            if 'xdelays' not in rfs or (not rfs['xdelays']) or (min(rfs['xdelays']) == 32):
                 delays = tile_geometry.calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
-                logger.debug("Calculated future delays: %s" % delays)
+                logger.info("Calculated future ideal dipole delays: %s" % delays)
             else:
                 delays = rfs['xdelays']
-                logger.debug("Used actual delays: %s" % delays)
+                logger.info("Used actual recorded delays: %s" % delays)
 
             all_delays.append(delays)
             all_centre_channels.append(channel)
