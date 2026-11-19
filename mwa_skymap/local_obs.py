@@ -110,13 +110,15 @@ def convert_time(newtime, lasttime):
 
     :param newtime: new time string to parse
     :param lasttime: previous time passed, used for parsing increments
-    :return: GPStime
+    :return: GPStime, or None if one can't be determined
 
     """
 
     timeout = newtime
 
-    if (isinstance(newtime, str)):
+    if not newtime:
+        return None    # Default to an 8-second observation if no stop time is given
+    elif (isinstance(newtime, str)):
         if (newtime.startswith('++')):
             try:
                 dt_string = newtime.replace('++', '')
@@ -134,7 +136,7 @@ def convert_time(newtime, lasttime):
                     dt = int(dt_string)
             except ValueError:
                 print('ERROR: Unable to interpret time increment: %s' % newtime)
-                return 0
+                return None
             timeout = next_mod8(gpstime=lasttime + dt - 8)
         elif ':' in newtime:
             try:
@@ -146,13 +148,13 @@ def convert_time(newtime, lasttime):
                 timeout = next_mod8(Time(newtime, format='iso').gps) - 8
             except ValueError:
                 print('ERROR: astropy.time.Time unable to interpret ISO timestamp: %s' % newtime)
-                return 0
+                return None
         else:
             try:
                 timeout = next_mod8(int(newtime) - 8)
             except ValueError:
                 print('ERROR: Unable to interpret GPStime: %s' % newtime)
-                return 0
+                return None
 
     return timeout
 
@@ -223,7 +225,7 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
                 freqs.append(int(atom))
             except ValueError:
                 print('ERROR: Unable to parse frequency channel: %s' % atom)
-                return freqs
+                return []
         elif (":" in atom):
             # assumes <channelstart>:<channelstop>:<increment>
             increment = 1
@@ -233,17 +235,17 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
                     increment = int(res[2])
                 except ValueError:
                     print('ERROR: Unable to parse frequency increment: %s' % res[2])
-                    return freqs
+                    return []
             try:
                 freqstart = int(res[0])
             except ValueError:
                 print('ERROR: Unable to parse frequency start: %s' % res[0])
-                return freqs
+                return []
             try:
                 freqstop = int(res[1])
             except ValueError:
                 print('ERROR: Unable to parse frequency stop: %s' % res[1])
-                return freqs
+                return []
             for freq in range(freqstart, freqstop + 1, increment):
                 freqs.append(freq)
         elif ("-" in atom):
@@ -255,17 +257,17 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
                     increment = int(res[2])
                 except ValueError:
                     print('ERROR: Unable to parse frequency increment: %s' % res[2])
-                    return freqs
+                    return []
             try:
                 freqstart = int(res[0])
             except ValueError:
                 print('ERROR: Unable to parse frequency start: %s' % res[0])
-                return freqs
+                return []
             try:
                 freqstop = int(res[1])
             except ValueError:
                 print('ERROR: Unable to parse frequency stop: %s' % res[1])
-                return freqs
+                return []
             for freq in range(freqstart, freqstop + 1, increment):
                 freqs.append(freq)
 
@@ -278,17 +280,17 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
                     increment = int(res[2])
                 except ValueError:
                     print('ERROR: Unable to parse frequency increment: %s' % res[2])
-                    return freqs
+                    return []
             try:
                 freqcenter = int(res[0])
             except ValueError:
                 print('ERROR: Unable to parse frequency center: %s' % res[0])
-                return freqs
+                return []
             try:
                 freqwidth = int(res[1])
             except ValueError:
                 print('ERROR: Unable to parse frequency width: %s' % res[1])
-                return freqs
+                return []
             for freq in range(freqcenter - int(freqwidth / 2.0), freqcenter + int(freqwidth / 2.0 + 0.5), increment):
                 freqs.append(freq)
 
@@ -301,7 +303,7 @@ def parse_freqs(input_spec='', numchannels=24, separator=";"):
     freqs.sort()
     # trim if necessary
     if len(freqs) > numchannels > 0:
-        print("WARNING: Removed excess items from frequency list: %s", freqs[numchannels:])
+        print("WARNING: Removed excess items from frequency list: %s" % (freqs[numchannels:],))
         freqs = freqs[:numchannels]
 
     if (len(freqs) == 1):
@@ -351,7 +353,7 @@ def main():
     parser.add_option("--stoptime",
                       dest="stoptime",
                       default=None,
-                      help="Observation stop time as above, or ++DT[s/m/h] from starttime. If omitted, use starttime + (nsources*nfreqs*exptime)")
+                      help="Observation stop time as above, or ++DT[s/m/h] from starttime.")
     parser.add_option("--utdate",
                       dest="utdate",
                       default=None,
@@ -433,11 +435,15 @@ def main():
     else:
         starttime = convert_time(options.starttime, starttimelast)
 
-    if (not starttime):
-        print("Can't determine start time in GPS seconds")
-        sys.exit(-1)
-
     stoptime = convert_time(options.stoptime, starttime)
+
+    if not starttime:
+        print("Can't determine start and stop time in GPS seconds")
+        sys.exit(-1)
+    elif not stoptime:
+        print("Can't determine stoptime, defaulting to an 8-second duration")
+        stoptime = starttime + 8
+
     obs_midpoint = Time((starttime + stoptime) / 2.0, format='gps', scale='utc')
     altaz_frame = AltAz(obstime=obs_midpoint, location=MWAPOS)
 
@@ -476,6 +482,9 @@ def main():
         sys.exit(-1)
 
     freq_list = parse_freqs(input_spec=options.freq)
+    if not freq_list:
+        print('Could not parse frequency specifier %s, aborting.' % options.freq)
+        sys.exit(-1)
 
     filename = '%s/%d.json' % (options.dir, starttime)
 

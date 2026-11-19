@@ -9,16 +9,10 @@ import logging
 import math
 import os
 import traceback
-import warnings
 
 import apng
 
 import imageio.v3 as iio
-
-warnings.filterwarnings("ignore")
-
-logging.basicConfig()
-DEFAULTLOGGER = logging.getLogger()
 
 import numpy
 
@@ -66,8 +60,8 @@ DPI = 150
 
 SKYDATA = None   # Will be an instance of SkyData() after the first use
 
-DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)d at %(viewgps_utc)s:\n" +
-                     "%(obsname)s at %(freq_mhz)4.1f MHz\n" +
+DEFAULT_PLOT_TEXT = ("Obs ID %(obsid)s at %(viewgps_utc)s:\n" +
+                     "%(obsname)s at %(freq_mhz)s MHz\n" +
                      "in the constellation %(constellation)s")
 
 # Used for multiple primary beams - the first beam is green contours, the second is cyan, etc
@@ -81,7 +75,7 @@ PBCOLORS = [(0.0, 1.0, 0.0),  # green
 BEAMS = {}
 try:
     import mwa_hyperbeam
-except:
+except ImportError:
     mwa_hyperbeam = None
 
 if mwa_hyperbeam:
@@ -96,7 +90,7 @@ if mwa_hyperbeam:
         else:
             BEAMS['HBFEE'] = mwa_hyperbeam.FEEBeam()
     except:
-        print('Failed to load the hyperbeam FEE beam - you probably need to run "skymap getbeamfile" first.')
+        logging.critical('Failed to load the hyperbeam FEE beam - you probably need to run "skymap getbeamfile" first.')
 
 try:
     from mwa_pb import primary_beam
@@ -163,7 +157,7 @@ class SkyData(object):
     ...
     ----------------
     """
-    def __init__(self, logger=DEFAULTLOGGER):
+    def __init__(self, logger=logging):
         self.valid = True   # Will be set to False if any errors are encountered loading the data files
 
         # Read the GLEAM source list
@@ -198,8 +192,7 @@ class SkyData(object):
                                     unit=(astropy.units.deg, astropy.units.deg))
             self.mapgrid.location = MWAPOS
         except:
-            logger.error('Cannot open radio image')
-            traceback.print_exc()
+            logger.error('Cannot open radio image: %s' % traceback.format_exc())
             self.valid = False
 
         # Set the colors for the GLEAM sources, in both normal and inverse modes
@@ -254,7 +247,7 @@ class SkyData(object):
         }
 
 
-def get_beam(Alt, Az, delays, freq_Hz, beam_type=list(BEAMS.keys())[0], logger=DEFAULTLOGGER):
+def get_beam(Alt, Az, delays, freq_Hz, beam_type=None, logger=logging):
     """
     Get a Stokes I value for every coordinate represented by the Alt/Az array values, for the given dipole
     delays and frequency in MHz.
@@ -271,6 +264,13 @@ def get_beam(Alt, Az, delays, freq_Hz, beam_type=list(BEAMS.keys())[0], logger=D
     :return: A numpy array with the same shape as the passed Alt and Az arrays, containing the beam power at each point,
              normalised to a maximum of 1.0
     """
+    if beam_type is None:
+        if BEAMS:
+            beam_type = list(BEAMS.keys())[0]
+        else:
+            logger.critical('No valid beam library found.')
+            return None
+
     za_rad = (90 - Alt) * math.pi / 180
     za_rad[za_rad >= math.pi / 2.0] = math.pi / 2.0    # Mask off below the horizon, because hyperbeam doesn't handle it
     az_rad = Az * math.pi / 180
@@ -339,7 +339,7 @@ def plot_MWA_skymap(delays=None,
                     beam_type='HBA',
                     plotsize=DEFAULT_PLOTSIZE,
                     img_format='png',
-                    logger=DEFAULTLOGGER):
+                    logger=logging):
     """
     This function plots a skymap showing a single MWA observation at a single point in time. The background image and
     overlaid sources (GLEAM sources, planets, etc) are taken from the SKYDATA global, containing an instance of
@@ -425,7 +425,7 @@ def plot_MWA_skymap(delays=None,
     bmap.imshow(numpy.ma.log10(tform_skymap[:, ::-1]), cmap=cmap, vmin=math.log10(RADIO_IMAGE_LOW), vmax=math.log10(RADIO_IMAGE_HIGH), ax=ax1)
 
     if delays:
-        if type(delays[0] is list):   # Multiple primary beams
+        if isinstance(delays[0], list):   # Multiple primary beams
             if type(channels) is list:   # Multiple channel values, one per beam
                 beam_list = zip(delays, channels)
             else:
@@ -459,6 +459,11 @@ def plot_MWA_skymap(delays=None,
                          this_delays,
                          this_channel * 1.28e6,
                          beam_type=beam_type)
+
+            if R is None:
+                logger.critical('No valid beam, exiting')
+                raise ValueError
+
             # show the beam
             X, Y = bmap(SKYDATA.skymapRA, SKYDATA.skymapDec)
             CS = bmap.contour(bmap.xmax - X, Y, R, contours, linewidths=plotscale, colors=beamcolor)
@@ -638,7 +643,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                        beam_type='HBA',
                        img_format='png',
                        plotsize=DEFAULT_PLOTSIZE,
-                       logger=DEFAULTLOGGER):
+                       logger=logging):
     """
     Given an MWA observation info structure, with one or more rf_streams (primary beams), generate a skymap of the
     observation at the single time specified by viewgps.
@@ -685,7 +690,7 @@ def plot_MWA_obs_frame(obsinfo=None,
         plot_text_template = DEFAULT_PLOT_TEXT
 
     if obsinfo:
-        print('rendering obsid: %s at %s' % (obsinfo['starttime'], viewgps))
+        logger.info('rendering obsid: %s at %s' % (obsinfo['starttime'], viewgps))
         all_delays = []
         all_centre_channels = []
         r_list = list(obsinfo['rfstreams'].keys())
@@ -728,7 +733,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                                           'viewgps_gps':viewgps,
                                           'viewgps_utc':Time(viewgps, format='gps', scale='utc').datetime.strftime('%Y-%m-%d %H:%M UT'),
                                           'obsname':obsinfo['obsname'],
-                                          'freq_mhz':all_centre_channels[0] * 1.28,
+                                          'freq_mhz':"%4.1f" % (all_centre_channels[0] * 1.28),
                                           'constellation':constellation[1]}
     else:
         plot_text = plot_text_template % {'obsid':'N/A',
@@ -738,7 +743,7 @@ def plot_MWA_obs_frame(obsinfo=None,
                                           'freq_mhz':'N/A',
                                           'constellation':'N/A'}
 
-        print('No observation info provided, renering at time %s' % viewgps)
+        logger.debug('No observation info provided, rendering at time %s' % viewgps)
         all_delays = None
         all_centre_channels = None
         voltage_beams = None
@@ -776,7 +781,7 @@ def mwa_apng_adaptive(outfile=None,
                       hidenulls=False,
                       beam_type='HBA',
                       plotsize=DEFAULT_PLOTSIZE,
-                      logger=DEFAULTLOGGER):
+                      logger=logging):
     """
     Given a list of observation info structures (assumed to be consecutive observations), generate an animated PNG of the skymaps
     for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
@@ -819,7 +824,7 @@ def mwa_apng_adaptive(outfile=None,
 
     if not stopgps:    # Default to end of the last observation, plus 8 seconds
         if not observations[obsid_list[-1]]:
-            print('No observations passed, no stopgps')
+            logger.critical('No observations passed, no stopgps')
             return None
         stopgps = observations[obsid_list[-1]]['stoptime'] + 8
 
@@ -851,7 +856,7 @@ def mwa_apng_adaptive(outfile=None,
                 t += sec_per_frame
             frame_list.append((obsid, t, obsid + exptime - t))  # Final frame has a duration until the next pointing
 
-    print('Framelist:\n    ' + '\n    '.join(str(f) for f in frame_list))
+    logger.info('Framelist:\n    ' + '\n    '.join(str(f) for f in frame_list))
 
     o_im = apng.APNG()
     for f in frame_list:
@@ -891,7 +896,7 @@ def mwa_mpeg(outfile=None,
              hidenulls=False,
              beam_type='HBA',
              plotsize=DEFAULT_PLOTSIZE,
-             logger=DEFAULTLOGGER):
+             logger=logging):
     """
     Given a list of observation info structures (assumed to be consecutive observations), generate an animated PNG of the skymaps
     for each observation, showing how the sky moves and the primary beam is repointed over the course of these observations.
@@ -934,7 +939,7 @@ def mwa_mpeg(outfile=None,
         startgps = obsid_list[0]
 
     if not stopgps:    # Default to end of the last observation, plus 8 seconds
-        stopgps = observations[obsid_list[-1]]['stoptime']
+        stopgps = max(o['stoptime'] for o in obsinfo_list)
 
     frame_list = []   # Will contain tuples of (obsid, viewgps)
     for tgps in range(startgps, stopgps, sec_per_frame):
@@ -949,12 +954,20 @@ def mwa_mpeg(outfile=None,
     else:
         ofile = io.BytesIO()
 
-    with iio.imopen(ofile, "w", plugin="pyav") as file:
-        file.init_video_stream("libx264", fps=fps, max_keyframe_interval=fps, force_keyframes=True)
+    with iio.imopen(ofile, "w", plugin="pyav", extension=".mp4") as file:
+        file.init_video_stream("libx264",
+                               fps=fps,
+                               pixel_format="yuv420p",                 # Required for QuickTime/iOS/Safari
+                               max_keyframe_interval=max(fps * 10, 2))  # One keyframe per ~10s of video
+        # x264 options: CRF quality (lower = better/larger), slower preset = smaller files,
+        # faststart puts the index at the front of the file for web/Apple playback
+        file._video_stream.options = {"crf": "26",
+                                      "preset": "slow",
+                                      "profile": "high",
+                                      "movflags": "faststart"}
         file.container_metadata["comment"] = "This video was created using mwa_skymap."
 
-        for f in frame_list:
-            oid, vgps = f
+        for oid, vgps in frame_list:
             im_frame = plot_MWA_obs_frame(obsinfo=observations[oid],
                                           viewgps=vgps,
                                           cchan=cchan,
@@ -967,10 +980,13 @@ def mwa_mpeg(outfile=None,
                                           plotsize=plotsize,
                                           img_format='png',
                                           logger=logger)
-            file.write_frame(iio.imread(im_frame)[:, :, :3])
+            frame = iio.imread(im_frame)[:, :, :3]
+            h, w = frame.shape[:2]
+            if h % 2 or w % 2:  # yuv420p requires even dimensions
+                frame = numpy.pad(frame, ((0, h % 2), (0, w % 2), (0, 0)), mode='edge')
+            file.write_frame(frame)
 
     if outfile:
-        file.close()
         return ''
     else:
         ofile.seek(0)

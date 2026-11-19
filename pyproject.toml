@@ -20,6 +20,7 @@ dependencies = [
     "astropy",
     "requests",
     "mwa-hyperbeam",
+    "numpy",
     "ephem",
     "matplotlib",
     "basemap",

@@ -10,7 +10,15 @@ import os
 import sys
 
 import click
+import logging
 import requests
+import warnings
+
+warnings.filterwarnings("ignore")
+
+logging.basicConfig(level=logging.INFO)
+DEFAULTLOGGER = logging.getLogger()
+
 
 from mwa_skymap import mwaplot
 
@@ -47,7 +55,7 @@ def get_observation(obsid, ldir=None):
             print('File %s not found' % obs_file)
             return None
     else:
-        result = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%s' % obsid)
+        result = requests.get('https://ws.mwatelescope.org/metadata/obs?obs_id=%s' % obsid, timeout=60)
         if result.status_code != 200:
             print('Failed to find observation %s in the MWA schedule' % obsid)
             return None
@@ -61,9 +69,12 @@ def getbeamfile():
         print('MWA beam file already exists here: %s' % mwaplot.MWA_BEAM_FILE)
         return
     print('Downloading MWA beam file...')
-    f = requests.get('https://ws.mwatelescope.org/static/mwa_full_embedded_element_pattern.h5')
-    with open(mwaplot.MWA_BEAM_FILE, 'wb') as beamf:
-        beamf.write(f.content)
+    url = 'https://ws.mwatelescope.org/static/mwa_full_embedded_element_pattern.h5'
+    with requests.get(url, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        with open(mwaplot.MWA_BEAM_FILE, 'wb') as beamf:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                beamf.write(chunk)
     print('Saved MWA beam file to: %s' % mwaplot.MWA_BEAM_FILE)
 
 
@@ -80,7 +91,7 @@ def beamtypes():
 
 
 @cli.command()
-@click.argument('obsid', type=str, default=0)
+@click.argument('obsid', type=str)
 @click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--viewgps', type=int, default=None, help='Plot reference time in GPS seconds (defaults to observation midpoint)')
 @click.option('--cchan', type=int, default=None, help='Coarse channel number (0-255, defaults to 13th channel in observation)')
@@ -105,15 +116,13 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
         elif obsid.isdigit():
             outfile = '%s.png' % obsid
         else:
-            print('Invalid obsid: %s' % obsid)
-            sys.exit(-1)
+            raise click.UsageError('Invalid obsid: %s' % obsid)
 
     img_format = outfile.split('.')[-1]
 
     obs = get_observation(obsid, ldir=ldir)
     if obs is None:
-        print('Failed to get observation %s' % obsid)
-        sys.exit(-1)
+        raise click.ClickException('Failed to get observation %s' % obsid)
 
     if not viewgps:
         viewgps = int((obs['starttime'] + obs['stoptime']) / 2)
@@ -138,7 +147,7 @@ def single(obsid, ldir, viewgps, cchan, gleamsources, text, inverse, background,
 @click.argument('obsids', type=str, nargs=-1)
 @click.option('--ldir', type=str, default=None, help='Local directory to look for <obsid>.json dummy observation files. Default to use MWA web service')
 @click.option('--startgps', type=int, default=None, help='Movie start time in GPS seconds (default to start of first obsid)')
-@click.option('--stopgps', type=int, default=None, help='Movie start time in GPS seconds (default to end of last obsid)')
+@click.option('--stopgps', type=int, default=None, help='Movie stop time in GPS seconds (default to end of last obsid)')
 @click.option('--cchan', type=int, default=None, help='Coarse channel number (0-255, defaults to 13th channel in observation)')
 @click.option('--fps', type=int, default=10, help='Movie frames per second (default 10)')
 @click.option('--mps', type=int, default=10, help='Movie speed, in minutes of observing time per second of movie (default 10)')
@@ -166,13 +175,11 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
         for obsid in obsids:
             obs = get_observation(obsid, ldir=ldir)
             if obs is None:
-                print('Failed to get observation %s' % obsid)
-                sys.exit(-1)
+                raise click.ClickException('Failed to get observation %s' % obsid)
             obsinfo_list.append(obs)
     else:
         if not (startgps and stopgps):
-            print('Need --startgps and --stopgps or at least one obsid')
-            return -1
+            raise click.ClickException('Need --startgps and --stopgps or at least one obsid')
         if ldir:
             flist = glob.glob(os.path.join(ldir, '*.json'))
             for f in flist:
@@ -180,35 +187,37 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
                 if foid.isdigit() and (startgps <= int(foid) <= stopgps):
                     obs = get_observation(obsid=foid, ldir=ldir)
                     if obs is None:
-                        print('Failed to get observation %s' % foid)
-                        sys.exit(-1)
+                        raise click.ClickException('Failed to get observation %s' % foid)
                     obsinfo_list.append(obs)
         else:
-            result = json.loads(requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps)).text)
-            for block in result:
-                obs = get_observation(obsid=block[0])
-                if obs is None:
-                    print('Failed to get observation %s' % block[0])
-                    sys.exit(-1)
-                obsinfo_list.append(obs)
+            resp = requests.get('https://ws.mwatelescope.org/metadata/find?mintime=%d&maxtime=%d' % (startgps, stopgps), timeout=60)
+            if resp.status_code == 200:
+                for block in resp.json():
+                    obs = get_observation(obsid=block[0])
+                    if obs is None:
+                        raise click.ClickException('Failed to get observation %s' % block[0])
+                    obsinfo_list.append(obs)
+            else:
+                raise click.ClickException('Failed to get observation list')
 
     if not startgps:
         if obsinfo_list:
             startgps = int(obsinfo_list[0]['starttime'])
         else:
-            print('Need --startgps or at least one obsid')
-            return -1
+            raise click.ClickException('Need --startgps or at least one obsid')
 
     if not stopgps:
         if obsinfo_list:
             stopgps = int(obsinfo_list[-1]['stoptime'])
         else:
-            print('Need --stopgps or at least one obsid')
-            return -1
+            raise click.ClickException('Need --stopgps or at least one obsid')
 
     if not outfile:
-        outfile = '%d.png' % startgps
-    img_format = outfile.split('.')[-1].upper()
+        outfile = '%d.mp4' % startgps
+        img_format = 'MP4'
+    else:
+        basename, extension = os.path.splitext(outfile)
+        img_format = extension.upper()
 
     if img_format == 'PNG':
         _m = mwaplot.mwa_apng_adaptive(outfile=outfile,
@@ -225,7 +234,7 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
                                        hidenulls=hidenulls,
                                        beam_type=beam_type,
                                        plotsize=plotsize)
-    elif img_format == 'MPG':
+    elif img_format == 'MP4':
         _m = mwaplot.mwa_mpeg(outfile=outfile,
                               obsinfo_list=obsinfo_list,
                               startgps=startgps,
@@ -241,10 +250,7 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
                               beam_type=beam_type,
                               plotsize=plotsize)
     else:
-        print('Unknown image format: %s' % img_format)
-        return -1
-
-    return 0
+        raise click.ClickException('Use either .png or .mp4 - unknown image format: %s' % img_format)
 
 
 if __name__ == '__main__':

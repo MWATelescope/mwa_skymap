@@ -13,12 +13,12 @@ def calc_delays(az=0.0, el=0.0):
        dipole in the tile having a maximal coherent amplitude in the
        desired direction.
 
-       This will return null if the inputs are
+       This will return None if the inputs are
        out of physical range (if za is bigger than 90) or
        if the calculated switches for the dipoles are out
        of range of the delaylines in the beamformer.
 
-       azimuth of 0 is north and it increases clockwise
+       azimuth of 0 is north and increases clockwise
        zenith angle is the angle down from zenith
        These angles should be given in degrees
 
@@ -54,7 +54,7 @@ def calc_delays(az=0.0, el=0.0):
 
     # Check input sanity
     if (abs(za) > 90):
-        return delaysettings
+        return None
 
         # Offsets of the dipoles are calculated relative to the
         # center of the tile, with positive values being in the north
