@@ -217,6 +217,8 @@ def movie(obsids, ldir, startgps, stopgps, cchan, fps, mps, gleamsources, text, 
         img_format = 'MP4'
     else:
         basename, extension = os.path.splitext(outfile)
+        if extension.startswith('.'):
+            extension = extension[1:]
         img_format = extension.upper()
 
     if img_format == 'PNG':
