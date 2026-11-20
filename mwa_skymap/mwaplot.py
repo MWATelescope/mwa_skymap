@@ -704,7 +704,7 @@ def plot_MWA_obs_frame(obsinfo=None,
             # If the observation is in the future (delays are all 32), calculate what delays will be used, instead of using the recorded actual delays
             if 'xdelays' not in rfs or (not rfs['xdelays']) or (min(rfs['xdelays']) == 32):
                 delays = tile_geometry.calc_delays(az=rfs['azimuth'], el=rfs['elevation'])
-                logger.info("Calculated future ideal dipole delays: %s" % delays)
+                logger.debug("Calculated future ideal dipole delays: %s" % delays)
             else:
                 delays = rfs['xdelays']
                 logger.info("Used actual recorded delays: %s" % delays)
